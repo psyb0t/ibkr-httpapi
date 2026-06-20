@@ -99,6 +99,11 @@ services:
     volumes:
       - ./config:/app/config:ro
       - ./logs:/app/logs
+      # History cache + historian + meta cache + exec ledger all persist
+      # under data/. This is the "goldmine" of accumulated market data
+      # the project keeps growing for as long as the cache stays mounted.
+      # Back it up. Gitignored. Survives container recreate.
+      - ./data:/app/data
     expose:
       - "8889"
     # api bridges all three networks: front (nginx reaches it), backend

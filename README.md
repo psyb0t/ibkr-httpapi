@@ -227,6 +227,39 @@ ibkr-httpapi/
 - Age-gate (`[tool.uv] exclude-newer` in `pyproject.toml`) bumps automatically on every `make pkg-{add,update,upgrade,remove}` via `scripts/bump_exclude_newer.sh` — 7-day floor at the moment of mutation.
 - All base images SHA-digest pinned. `requirements.txt` hash-locked via `uv pip compile --generate-hashes`.
 
+## Pacing + history caches (v0.2.0)
+
+Every IBKR-bound endpoint is preemptively rate-limited AND every endpoint
+that returns historical / quasi-static / piggyback-snapshottable data is
+transparently cached to disk under `data/history/`. Goal: protect API
+access (IBKR revokes for repeat pacing violations) AND grow a long-term
+goldmine of market data on every call.
+
+- **Pacing** — 3 tiers (`historical` / `market_data` / `orders`) with
+  sliding-window counters + per-contract `asyncio.Lock` + global
+  semaphore. Defaults sit BELOW IBKR's published caps. Hard cap →
+  `429 RATE_LIMIT_NEAR`. Tune via `config.yaml:pacing.<tier>.<key>`.
+- **Bars cache** — `/rates` + `/ticks` persist to wickworks-shaped CSV
+  per (asset class, symbol, timeframe). Append-only.
+- **Live snapshot historian** — every `/tick` and `/chain` call appends
+  to disk (bid/ask/last + Greeks/IV for options, per-strike rows for
+  chains). Best-effort; never blocks the caller.
+- **Meta cache** — long-TTL JSON for contract details (7d), futures
+  expiry lists (1d), option chain strike lists (1d).
+- **Exec ledger** — `/history/executions` + `/history/completed_orders`
+  append-only JSONL by day, dedup'd by execId / (permId, orderId).
+
+Mount `./data:/app/data` (compose does this by default). Back up that
+directory — it IS the goldmine. Configure or disable per-feature via
+`config/config.yaml`.
+
+**Licensing caveat:** IBKR's market data terms restrict redistribution.
+Internal backtesting / model training / forensics on the cache is fine
+(and explicitly allowed). Selling raw OHLC from the cache likely
+violates OPRA / NYSE / Nasdaq redistributor licenses + IBKR's API
+license — sell derived analysis (signals, backtests, aggregated stats)
+instead.
+
 ## Code generation
 
 `api/v1.yaml` is the source of truth. `make generate` (umbrella) runs:

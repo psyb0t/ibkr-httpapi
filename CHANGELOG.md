@@ -4,6 +4,97 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## v0.2.0 — 2026-06-20
+
+Preemptive IBKR pacing + transparent disk caching for every endpoint
+that returns historical / quasi-static / piggyback-snapshottable data.
+Goal: protect API access (IBKR revokes for repeat pacing violations)
+AND grow a long-term goldmine of market data on every call.
+
+### Pacing — preemptive rate-limit gate
+
+- **Three tiers** with separate sliding-window counters, per-contract
+  `asyncio.Lock` serialization, and global `asyncio.Semaphore`
+  concurrency caps:
+  - `historical` — gated against IBKR's 60-requests-per-10-min hard cap
+    (default soft 50 / hard 55, leaves 5-request headroom).
+  - `market_data` — gated under the ~50-msg/sec TWS socket ceiling
+    (default 40/sec, 10 concurrent).
+  - `orders` — deliberately tight (5/sec, 3 concurrent — order floods
+    signal a bug).
+- **Soft cap → `WARN` log** so operators see they're approaching the
+  limit. **Hard cap → `429 RATE_LIMIT_NEAR`** error envelope with
+  `{rule, used, limit, window_sec, retry_after_sec, tier}` details.
+- Per-contract per-second cap mirrors IBKR's "2 hist requests / sec /
+  contract" rule.
+- All three tiers configurable via `config.yaml:pacing.<tier>.<key>`.
+
+### History caches — every history endpoint cached transparently
+
+- **`ibkrapi/cache_bars.py`** — per-(class, symbol, timeframe) CSV cache
+  for `/rates` and `/ticks`. Wickworks-shaped (`time,open,high,low,
+  close,tickVolume` with epoch seconds). Per-file `asyncio.Lock`. Bars
+  merged + persisted on every call so the cache file grows append-only
+  forever. Latest tail bars always re-pulled (`refresh_tail_bars: 5`).
+  Open bars dropped by default (`persist_open_bar: false`). Atomic
+  write via tmp+rename. Options grouped under per-underlying subdir
+  (`data/history/options/SPY/<OCC>_<TF>.csv`).
+- **`ibkrapi/cache_meta.py`** — long-TTL JSON cache for quasi-static
+  metadata: contract details (7-day TTL), futures expiry lists (1 day),
+  option chain strike lists (1 day). Per-key single-flight via
+  `asyncio.Lock` prevents stampede on miss.
+- **`ibkrapi/historian.py`** — live-snapshot piggyback. Every `/tick`
+  appends a row to `data/history/snapshots/<class>/<symbol>.csv` with
+  bid/ask/last + Greeks/IV for options. Every `/chain` appends rows
+  per strike per expiry to
+  `data/history/chains/<UNDERLYING>/<EXPIRY>.csv`. Writes are
+  best-effort — a historian failure NEVER blocks the caller's
+  response.
+- **`ibkrapi/exec_history.py`** — append-only JSONL ledger of fills
+  + completed orders at `data/history/exec/{executions,completed_orders}/
+  YYYY-MM-DD.jsonl`. Dedup by execId for fills, (permId, orderId) for
+  completed orders.
+- **All caches OFF by default in tests** (`tests/conftest.py` autouse
+  fixture); ON by default in prod via `history_cache.enabled: true` +
+  friends in `config.yaml`.
+
+### Compose / persistence
+
+- New volume: `./data:/app/data` mounted into the `api` service so the
+  cache + historian + meta + exec ledger persist across container
+  recreates. Back this directory up — it IS the goldmine.
+- `data/` added to `.gitignore` (the cache contents must NEVER enter
+  git; data growth is unbounded over time).
+
+### IBKR data redistribution — internal-use only
+
+IBKR market data terms restrict redistribution. Selling raw OHLC
+sourced via IBKR API access can violate OPRA / NYSE / Nasdaq
+redistributor licenses + IBKR's API license. What IS fine: using the
+cache for your own backtesting / strategy training / forensics
+(IBKR explicitly allows this), and selling **derived analysis**
+(signals, indicators, backtest results, aggregated statistics) that
+aren't reconstructible into the original prints. Design the cache as
+internal infrastructure; sell what you compute from it.
+
+### Tests
+
+- 49 new tests across `test_{pacing,cache_bars,historian,cache_meta,
+  exec_history}.py`. **142 tests total, all green.**
+- Conftest autouse fixture disables all persistence + seeds pacing
+  with permissive limits so existing test_server.py tests are
+  unaffected by the new wiring.
+
+### Known v0.2.0 gaps (planned for v0.3.0)
+
+- `?refresh=true` query param to bypass cache — needs `api/v1.yaml`
+  update + regen + impl signature changes across 40+ ops; deferred.
+- `429 RATE_LIMIT_NEAR` response not yet documented in `api/v1.yaml`
+  (works at runtime; spec doc deferred to v0.3.0).
+- `/rates/ta` endpoints are pacing-gated but bars NOT yet cached —
+  needs splitting `marketdata.rates_with_ta` into separate cache +
+  TA-enrichment phases; deferred.
+
 ## v0.1.0 — 2026-06-20
 
 Initial public release. HTTP wrapper over Interactive Brokers via `ib_async`

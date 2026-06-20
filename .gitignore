@@ -26,6 +26,7 @@ config/tws.xml
 config/ibgateway/
 secrets/
 .data/
+data/
 logs/
 run.log
 nginx/nginx.conf

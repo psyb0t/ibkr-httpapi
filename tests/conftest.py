@@ -12,6 +12,63 @@ import os
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from ibkrapi import cache_bars, cache_meta, exec_history, historian, pacing
+
+
+@pytest.fixture(autouse=True)
+def _disable_persistence_and_seed_pacing(tmp_path, monkeypatch):
+    """Default test environment: persistence OFF, pacing permissive.
+
+    Per-module tests that NEED persistence override this in their own
+    fixtures (test_pacing / test_cache_bars / test_historian / etc.).
+    """
+    monkeypatch.setattr(
+        "ibkrapi.cache_bars._CFG",
+        cache_bars.CacheConfig(enabled=False, path=str(tmp_path)),
+    )
+    monkeypatch.setattr(
+        "ibkrapi.historian._CFG",
+        historian.HistorianConfig(enabled=False, path=str(tmp_path)),
+    )
+    monkeypatch.setattr(
+        "ibkrapi.cache_meta._CFG",
+        cache_meta.MetaCacheConfig(enabled=False, path=str(tmp_path)),
+    )
+    monkeypatch.setattr(
+        "ibkrapi.exec_history._CFG",
+        exec_history.ExecHistoryConfig(enabled=False, path=str(tmp_path)),
+    )
+    # Pacing must be configured for guards to work — high limits so tests
+    # don't trip them. The pacing-specific tests reset to their own config.
+    pacing.configure(
+        {
+            "historical": pacing.TierConfig(
+                per_window=10000,
+                per_window_soft=9000,
+                per_window_hard=9500,
+                window_sec=60,
+                per_contract_per_sec=10000,
+                concurrent=100,
+            ),
+            "market_data": pacing.TierConfig(
+                per_window=100000,
+                per_window_soft=90000,
+                per_window_hard=95000,
+                window_sec=60,
+                per_contract_per_sec=10000,
+                concurrent=100,
+            ),
+            "orders": pacing.TierConfig(
+                per_window=10000,
+                per_window_soft=9000,
+                per_window_hard=9500,
+                window_sec=60,
+                per_contract_per_sec=10000,
+                concurrent=100,
+            ),
+        }
+    )
+    yield
 
 
 @pytest.fixture

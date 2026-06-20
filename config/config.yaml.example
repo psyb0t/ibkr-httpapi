@@ -88,3 +88,73 @@ contract_defaults:
   index:
     exchange: "CBOE"
     currency: "USD"
+
+# ─── Pacing — preemptive rate-limit thresholds ─────────────────────
+# Three tiers. Defaults sit BELOW IBKR's published hard caps to leave
+# headroom — overriding is rarely needed.
+#   historical:  60/10min cap (IBKR rejects past that with err 162)
+#   market_data: ~50 msg/sec TWS socket ceiling
+#   orders:      tight by design — bursts of orders signal a bug
+# soft = WARN log; hard = our side returns 429 RATE_LIMIT_NEAR. Never
+# set hard ABOVE per_window — leave a buffer for in-flight races.
+pacing:
+  historical:
+    per_window: 60
+    per_window_soft: 50
+    per_window_hard: 55
+    window_sec: 600
+    per_contract_per_sec: 2
+    concurrent: 3
+  market_data:
+    per_window: 2400        # 40/sec * 60s
+    per_window_soft: 2000
+    per_window_hard: 2200
+    window_sec: 60
+    per_contract_per_sec: 5
+    concurrent: 10
+  orders:
+    per_window: 300         # 5/sec * 60s
+    per_window_soft: 250
+    per_window_hard: 275
+    window_sec: 60
+    per_contract_per_sec: 2
+    concurrent: 3
+
+# ─── History cache (OHLC bars CSV) ─────────────────────────────────
+# Transparent disk cache for every /rates + /ticks call. Wickworks-
+# shaped CSV per (asset_class, symbol, timeframe). Append-only — bars
+# accumulate over time, building a goldmine of price history.
+# Path is mounted from the host via the `./data` volume in
+# docker-compose.yml. `enabled: false` disables cache entirely (every
+# call goes straight to IBKR).
+history_cache:
+  enabled: true
+  path: "/app/data/history"
+  refresh_tail_bars: 5      # always re-pull the last N closed bars
+  persist_open_bar: false   # drop the in-progress (still-open) bar
+
+# ─── Historian (live-snapshot piggyback) ───────────────────────────
+# Every /tick and /chain call appends a snapshot row to disk — turns
+# your scanner's live polling into a free time-series of bid/ask/
+# last/Greeks/IV/OI. Same `data/history/` root as the bars cache.
+historian:
+  enabled: true
+
+# ─── Meta cache (quasi-static JSON) ────────────────────────────────
+# Long-TTL JSON cache for contract details, futures expiry lists, and
+# option chain strike lists. These rarely change so we cache aggressively
+# to keep IBKR off our back. Override per-scope TTL in seconds below.
+meta_cache:
+  enabled: true
+  ttl_sec:
+    contract_details: 604800   # 7 days
+    futures_expiries: 86400    # 1 day
+    chain_strike_list: 86400   # 1 day
+
+# ─── Execution / order history append-only ledger ──────────────────
+# Every /history/executions + /history/completed_orders call appends
+# new (dedup'd) records to a per-day JSONL file under data/history/exec/.
+# Permanent record of your trading activity, independent of IBKR's
+# retention. Disable if you keep a separate audit trail.
+exec_history:
+  enabled: true

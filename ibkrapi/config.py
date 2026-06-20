@@ -121,5 +121,81 @@ WICKWORKS_TIMEOUT_SECONDS = (
 # ── Contract defaults ───────────────────────────────────────────
 CONTRACT_DEFAULTS = _cfg.get("contract_defaults") or {}
 
+# ── Pacing tiers — preemptive rate-limit thresholds ────────────────
+# Defaults sit BELOW IBKR's documented hard caps to leave headroom.
+# Operators override via config.yaml:pacing.<tier>.<key>.
+# pacing.configure() is called from server.py startup.
+_PACING_DEFAULTS: dict[str, dict] = {
+    # 60/10min is the IBKR hard limit on historical-data requests.
+    # Soft 50 / hard 55 leaves 5-request buffer for in-flight races.
+    "historical": {
+        "per_window": 60,
+        "per_window_soft": 50,
+        "per_window_hard": 55,
+        "window_sec": 600,
+        "per_contract_per_sec": 2,
+        "concurrent": 3,
+    },
+    # TWS socket caps around ~50 msg/sec globally. Stay 20% under.
+    "market_data": {
+        "per_window": 2400,  # 40/sec * 60s
+        "per_window_soft": 2000,
+        "per_window_hard": 2200,
+        "window_sec": 60,
+        "per_contract_per_sec": 5,
+        "concurrent": 10,
+    },
+    # Orders are deliberately tight — sustained order flow at high
+    # rate signals a bug or rogue strategy.
+    "orders": {
+        "per_window": 300,  # 5/sec * 60s
+        "per_window_soft": 250,
+        "per_window_hard": 275,
+        "window_sec": 60,
+        "per_contract_per_sec": 2,
+        "concurrent": 3,
+    },
+}
+
+_pacing_overrides = _cfg.get("pacing") or {}
+
+
+def _resolve_pacing_tier(name: str) -> dict:
+    base = dict(_PACING_DEFAULTS[name])
+    base.update(_pacing_overrides.get(name) or {})
+    return base
+
+
+PACING_TIERS: dict[str, dict] = {n: _resolve_pacing_tier(n) for n in _PACING_DEFAULTS}
+
+# ── History cache ──────────────────────────────────────────────────
+# Bars cache builds the long-term goldmine — never deletes, only grows.
+# CSV format chosen for debuggability + universal ingest.
+_hc = _cfg.get("history_cache") or {}
+HISTORY_CACHE_ENABLED = bool(_hc.get("enabled", True))
+HISTORY_CACHE_PATH = (
+    os.environ.get("HISTORY_CACHE_PATH")
+    or _hc.get("path")
+    or os.path.join(BASE_DIR, "data", "history")
+)
+HISTORY_CACHE_REFRESH_TAIL_BARS = int(_hc.get("refresh_tail_bars", 5))
+HISTORY_CACHE_PERSIST_OPEN_BAR = bool(_hc.get("persist_open_bar", False))
+
+# ── Historian (live-snapshot piggyback on /tick + /chain) ────────
+_his = _cfg.get("historian") or {}
+HISTORIAN_ENABLED = bool(_his.get("enabled", True))
+HISTORIAN_PATH = HISTORY_CACHE_PATH  # share data/history/ root
+
+# ── Metadata cache (long-TTL JSON cache for quasi-static data) ────
+_mc = _cfg.get("meta_cache") or {}
+META_CACHE_ENABLED = bool(_mc.get("enabled", True))
+META_CACHE_PATH = os.path.join(HISTORY_CACHE_PATH, "meta")
+META_CACHE_TTL_SEC: dict[str, int] = {k: int(v) for k, v in (_mc.get("ttl_sec") or {}).items()}
+
+# ── Execution / order history append-only ledger ────────────────
+_eh = _cfg.get("exec_history") or {}
+EXEC_HISTORY_ENABLED = bool(_eh.get("enabled", True))
+EXEC_HISTORY_PATH = os.path.join(HISTORY_CACHE_PATH, "exec")
+
 # ── Identity (for log prefix) ───────────────────────────────────
 IDENTITY = f"{GATEWAY_HOST}:{GATEWAY_PORT}#{CLIENT_ID}"

@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 
-from ibkrapi import ibclient
+from ibkrapi import cache_bars, cache_meta, exec_history, historian, ibclient, pacing
 from ibkrapi.api._generated.routers import (
     cfd,
     crypto,
@@ -22,7 +22,21 @@ from ibkrapi.api._generated.routers import (
     stocks,
     system,
 )
-from ibkrapi.config import API_TOKEN
+from ibkrapi.config import (
+    API_TOKEN,
+    EXEC_HISTORY_ENABLED,
+    EXEC_HISTORY_PATH,
+    HISTORIAN_ENABLED,
+    HISTORIAN_PATH,
+    HISTORY_CACHE_ENABLED,
+    HISTORY_CACHE_PATH,
+    HISTORY_CACHE_PERSIST_OPEN_BAR,
+    HISTORY_CACHE_REFRESH_TAIL_BARS,
+    META_CACHE_ENABLED,
+    META_CACHE_PATH,
+    META_CACHE_TTL_SEC,
+    PACING_TIERS,
+)
 from ibkrapi.errors import (
     CODE_INTERNAL,
     CODE_UNAUTHORIZED,
@@ -33,6 +47,42 @@ from ibkrapi.errors import (
 from ibkrapi.logger import log
 
 _AUTH_HEADER_PREFIX = "Bearer "
+
+
+def _configure_pacing_and_caches() -> None:
+    """Wire pacing + cache modules from config. Runs once at import time
+    so the modules are ready before the first request lands."""
+    pacing.configure({name: pacing.TierConfig(**cfg) for name, cfg in PACING_TIERS.items()})
+    cache_bars.configure(
+        cache_bars.CacheConfig(
+            enabled=HISTORY_CACHE_ENABLED,
+            path=HISTORY_CACHE_PATH,
+            refresh_tail_bars=HISTORY_CACHE_REFRESH_TAIL_BARS,
+            persist_open_bar=HISTORY_CACHE_PERSIST_OPEN_BAR,
+        )
+    )
+    historian.configure(
+        historian.HistorianConfig(
+            enabled=HISTORIAN_ENABLED,
+            path=HISTORIAN_PATH,
+        )
+    )
+    cache_meta.configure(
+        cache_meta.MetaCacheConfig(
+            enabled=META_CACHE_ENABLED,
+            path=META_CACHE_PATH,
+            ttl_sec=META_CACHE_TTL_SEC or None,
+        )
+    )
+    exec_history.configure(
+        exec_history.ExecHistoryConfig(
+            enabled=EXEC_HISTORY_ENABLED,
+            path=EXEC_HISTORY_PATH,
+        )
+    )
+
+
+_configure_pacing_and_caches()
 
 
 @asynccontextmanager
@@ -55,7 +105,7 @@ async def _lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ibkr-httpapi",
-    version="0.1.0",
+    version="0.2.0",
     description="HTTP wrapper over IBKR via ib_async. Asset-class routed.",
     lifespan=_lifespan,
 )

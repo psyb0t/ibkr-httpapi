@@ -12,6 +12,11 @@ existing `marketdata` / `contracts` / `ibclient` helpers.
 Every function name MUST match the snake-cased `operationId` from
 `api/v1.yaml`. The `make gen-api-check` target verifies that every
 generated router function resolves to one in this module.
+
+v0.2.0 added preemptive pacing + transparent disk caching for every
+endpoint that returns historical/quasi-static data — see `pacing`,
+`cache_bars`, `cache_meta`, `historian`, `exec_history` modules.
+Cache writes are best-effort and never block the caller's response.
 """
 
 from __future__ import annotations
@@ -29,8 +34,17 @@ from ib_async import (
     StopOrder,
 )
 
-from ibkrapi import contracts as contract_factories
-from ibkrapi import marketdata
+from ibkrapi import (
+    cache_bars,
+    cache_meta,
+    exec_history,
+    historian,
+    marketdata,
+    pacing,
+)
+from ibkrapi import (
+    contracts as contract_factories,
+)
 from ibkrapi.api._generated.models import (
     AccountsList,
     AccountSummary,
@@ -99,6 +113,122 @@ _ORDER_ASSET_BUILDERS = {
     "cash": contract_factories.forex,
     "crypto": contract_factories.crypto,
 }
+
+
+# ─── Pacing + cache helpers ─────────────────────────────────────────
+
+
+async def _cached_bars(
+    contract,
+    *,
+    asset_class: str,
+    symbol: str,
+    underlying: str | None = None,
+    duration: str,
+    bar_size: str | None,
+    end_dt: str | None,
+    what: str | None,
+    rth: bool,
+) -> list[dict]:
+    """Historical bars wrapped with pacing + transparent disk cache.
+
+    Cache key = (asset_class, symbol, bar_size). Bars merged + persisted
+    on every call so the goldmine grows over time. Pacing tier =
+    `historical` (gated against IBKR's 60/10min cap)."""
+    key = pacing.contract_key(contract)
+
+    async def _fetch() -> list[dict]:
+        async with pacing.guard("historical", key):
+            return await marketdata.historical_bars(
+                contract,
+                duration=duration,
+                bar_size=bar_size,
+                end_datetime=end_dt,
+                what_to_show=what,
+                use_rth=rth,
+            )
+
+    bars, _ = await cache_bars.get_or_fetch(
+        asset_class=asset_class,
+        symbol=symbol,
+        bar_size=bar_size,
+        underlying=underlying,
+        requested_bars=None,
+        fetch_full=_fetch,
+    )
+    return bars
+
+
+async def _paced_ticks(
+    contract,
+    *,
+    start_dt: str | None,
+    end_dt: str | None,
+    n: int,
+    what: str | None,
+    rth: bool,
+) -> list[dict]:
+    key = pacing.contract_key(contract)
+    async with pacing.guard("historical", key):
+        return await marketdata.historical_ticks(
+            contract,
+            start_datetime=start_dt,
+            end_datetime=end_dt,
+            number_of_ticks=n,
+            what_to_show=what,
+            use_rth=rth,
+        )
+
+
+async def _gated_tick(
+    contract,
+    *,
+    asset_class: str,
+    symbol: str,
+    underlying: str | None = None,
+) -> dict:
+    """Snapshot tick under market_data pacing + historian piggyback."""
+    key = pacing.contract_key(contract)
+    async with pacing.guard("market_data", key):
+        td = await marketdata.snapshot_tick(contract)
+    await historian.record_tick(asset_class, symbol, td, underlying=underlying)
+    return td
+
+
+async def _cached_details(contract, *, scope: str = "contract_details") -> list[dict]:
+    """Long-TTL JSON cache for contract metadata."""
+    key = pacing.contract_key(contract)
+
+    async def _fetch() -> list[dict]:
+        async with pacing.guard("market_data", key):
+            return await marketdata.contract_details(contract)
+
+    details, _ = await cache_meta.get_or_fetch(scope, key, _fetch)
+    return details
+
+
+async def _paced_rates_ta(
+    contract,
+    body: RatesTARequest,
+    *,
+    default_what: str | None = None,
+) -> dict:
+    """rates_with_ta wrapped with historical-tier pacing (caching of
+    the underlying bars happens inside marketdata after v0.3.0 ties it
+    together; for v0.2.0 the bars are fetched fresh each call but still
+    pacing-gated to protect IBKR access)."""
+    key = pacing.contract_key(contract)
+    async with pacing.guard("historical", key):
+        return await marketdata.rates_with_ta(
+            contract,
+            duration=body.duration,
+            bar_size=body.barSize,
+            end_datetime=body.endDateTime,
+            what_to_show=body.whatToShow or default_what,
+            use_rth=bool(body.useRTH),
+            indicators=body.indicators or {},
+            recent_bars=body.recentBars,
+        )
 
 
 # ─── system ────────────────────────────────────────────────────────
@@ -174,12 +304,12 @@ def _stock(symbol, exchange, currency, primary_exchange):
 
 async def get_stock_contract(symbol, exchange, currency, primary_exchange) -> ContractDetailsList:
     contract = _stock(symbol, exchange, currency, primary_exchange)
-    return ContractDetailsList(contracts=await marketdata.contract_details(contract))
+    return ContractDetailsList(contracts=await _cached_details(contract))
 
 
 async def get_stock_tick(symbol, exchange, currency, primary_exchange) -> Ticker:
     contract = _stock(symbol, exchange, currency, primary_exchange)
-    return Ticker(**await marketdata.snapshot_tick(contract))
+    return Ticker(**await _gated_tick(contract, asset_class="stocks", symbol=symbol))
 
 
 async def get_stock_rates(
@@ -194,13 +324,15 @@ async def get_stock_rates(
     primary_exchange,
 ) -> BarsResponse:
     contract = _stock(symbol, exchange, currency, primary_exchange)
-    bars = await marketdata.historical_bars(
+    bars = await _cached_bars(
         contract,
+        asset_class="stocks",
+        symbol=symbol,
         duration=duration,
         bar_size=bar_size,
-        end_datetime=end_date_time,
-        what_to_show=what_to_show,
-        use_rth=use_r_t_h,
+        end_dt=end_date_time,
+        what=what_to_show,
+        rth=bool(use_r_t_h),
     )
     return BarsResponse(symbol=symbol, secType=SECTYPE_STK, bars=bars)
 
@@ -217,13 +349,13 @@ async def get_stock_ticks(
     primary_exchange,
 ) -> TicksResponse:
     contract = _stock(symbol, exchange, currency, primary_exchange)
-    ticks = await marketdata.historical_ticks(
+    ticks = await _paced_ticks(
         contract,
-        start_datetime=start_date_time,
-        end_datetime=end_date_time,
-        number_of_ticks=number_of_ticks,
-        what_to_show=what_to_show,
-        use_rth=use_r_t_h,
+        start_dt=start_date_time,
+        end_dt=end_date_time,
+        n=number_of_ticks,
+        what=what_to_show,
+        rth=bool(use_r_t_h),
     )
     return TicksResponse(symbol=symbol, secType=SECTYPE_STK, ticks=ticks)
 
@@ -232,18 +364,7 @@ async def get_stock_rates_t_a(
     symbol, exchange, currency, primary_exchange, body: RatesTARequest
 ) -> RatesTAResponse:
     contract = _stock(symbol, exchange, currency, primary_exchange)
-    return RatesTAResponse(
-        **await marketdata.rates_with_ta(
-            contract,
-            duration=body.duration,
-            bar_size=body.barSize,
-            end_datetime=body.endDateTime,
-            what_to_show=body.whatToShow,
-            use_rth=body.useRTH,
-            indicators=body.indicators,
-            recent_bars=body.recentBars,
-        )
-    )
+    return RatesTAResponse(**await _paced_rates_ta(contract, body))
 
 
 # ─── options ───────────────────────────────────────────────────────
@@ -276,32 +397,43 @@ async def get_option_chain(
                 "Provide underlyingConId for non-STK underlyings",
                 code=CODE_BAD_REQUEST,
             )
-        qualified = await ib.qualifyContractsAsync(underlying)
+        async with pacing.guard("market_data", f"qualify:{symbol}"):
+            qualified = await ib.qualifyContractsAsync(underlying)
         first = qualified[0] if qualified else None
         if not isinstance(first, Contract):
             raise APIError(
                 404, "Underlying not found", code=CODE_NOT_FOUND, details={"symbol": symbol}
             )
         underlying_con_id = first.conId
-    chains = await ib.reqSecDefOptParamsAsync(
-        underlyingSymbol=symbol,
-        futFopExchange=fut_fop_exchange or "",
-        underlyingSecType=underlying_sec_type,
-        underlyingConId=underlying_con_id,
-    )
+
+    cache_key = f"{symbol}:{underlying_sec_type}:{fut_fop_exchange or '*'}:{underlying_con_id}"
+
+    async def _fetch_chain() -> list[dict]:
+        async with pacing.guard("market_data", f"chain:{cache_key}"):
+            chains = await ib.reqSecDefOptParamsAsync(
+                underlyingSymbol=symbol,
+                futFopExchange=fut_fop_exchange or "",
+                underlyingSecType=underlying_sec_type,
+                underlyingConId=underlying_con_id,
+            )
+        return [
+            {
+                "exchange": c.exchange,
+                "tradingClass": c.tradingClass,
+                "multiplier": c.multiplier,
+                "expirations": sorted(c.expirations),
+                "strikes": sorted(c.strikes),
+            }
+            for c in (chains or [])
+        ]
+
+    entries, _ = await cache_meta.get_or_fetch("chain_strike_list", cache_key, _fetch_chain)
+    # Piggyback: append a snapshot row per strike to the chain history.
+    await historian.record_chain(symbol, entries)
     return OptionChain(
         symbol=symbol,
         underlyingConId=underlying_con_id,
-        chains=[
-            OptionChainEntry(
-                exchange=c.exchange,
-                tradingClass=c.tradingClass,
-                multiplier=c.multiplier,
-                expirations=sorted(c.expirations),
-                strikes=sorted(c.strikes),
-            )
-            for c in (chains or [])
-        ],
+        chains=[OptionChainEntry(**e) for e in entries],
     )
 
 
@@ -309,14 +441,18 @@ async def get_option_contract(
     symbol, expiry, strike, right, exchange, currency, multiplier, trading_class
 ) -> ContractDetailsList:
     contract = _option(symbol, expiry, strike, right, exchange, currency, multiplier, trading_class)
-    return ContractDetailsList(contracts=await marketdata.contract_details(contract))
+    return ContractDetailsList(contracts=await _cached_details(contract))
 
 
 async def get_option_tick(
     symbol, expiry, strike, right, exchange, currency, multiplier, trading_class
 ) -> Ticker:
     contract = _option(symbol, expiry, strike, right, exchange, currency, multiplier, trading_class)
-    return Ticker(**await marketdata.snapshot_tick(contract))
+    # Per-contract snapshot history under data/history/snapshots/options/<UNDERLYING>/<OCC>.csv
+    occ = f"{symbol}_{expiry}{(right or '').upper()}{round(float(strike) * 1000):08d}"
+    return Ticker(
+        **await _gated_tick(contract, asset_class="options", symbol=occ, underlying=symbol)
+    )
 
 
 async def get_option_rates(
@@ -335,13 +471,17 @@ async def get_option_rates(
     trading_class,
 ) -> BarsResponse:
     contract = _option(symbol, expiry, strike, right, exchange, currency, multiplier, trading_class)
-    bars = await marketdata.historical_bars(
+    occ = f"{symbol}_{expiry}{(right or '').upper()}{round(float(strike) * 1000):08d}"
+    bars = await _cached_bars(
         contract,
+        asset_class="options",
+        symbol=occ,
+        underlying=symbol,
         duration=duration,
         bar_size=bar_size,
-        end_datetime=end_date_time,
-        what_to_show=what_to_show,
-        use_rth=use_r_t_h,
+        end_dt=end_date_time,
+        what=what_to_show,
+        rth=bool(use_r_t_h),
     )
     return BarsResponse(
         symbol=symbol, secType=SECTYPE_OPT, expiry=expiry, strike=strike, right=right, bars=bars
@@ -360,18 +500,7 @@ async def get_option_rates_t_a(
     body: RatesTARequest,
 ) -> RatesTAResponse:
     contract = _option(symbol, expiry, strike, right, exchange, currency, multiplier, trading_class)
-    return RatesTAResponse(
-        **await marketdata.rates_with_ta(
-            contract,
-            duration=body.duration,
-            bar_size=body.barSize,
-            end_datetime=body.endDateTime,
-            what_to_show=body.whatToShow,
-            use_rth=body.useRTH,
-            indicators=body.indicators,
-            recent_bars=body.recentBars,
-        )
-    )
+    return RatesTAResponse(**await _paced_rates_ta(contract, body))
 
 
 async def place_option_combo(body: ComboOrderRequest) -> Trade:
@@ -379,10 +508,10 @@ async def place_option_combo(body: ComboOrderRequest) -> Trade:
     bag = contract_factories.combo(
         body.symbol,
         legs=[leg.model_dump() for leg in body.legs],
-        exchange=body.exchange,
-        currency=body.currency,
+        exchange=body.exchange or "",
+        currency=body.currency or "USD",
     )
-    order_type = body.orderType.upper()
+    order_type = (body.orderType or "").upper()
     if order_type not in COMBO_VALID_ORDER_TYPES:
         raise APIError(
             400,
@@ -391,22 +520,23 @@ async def place_option_combo(body: ComboOrderRequest) -> Trade:
             details={"accepted": list(COMBO_VALID_ORDER_TYPES)},
         )
     if order_type == ORDER_TYPE_MKT:
-        order = MarketOrder(body.action.upper(), body.quantity, tif=body.tif)
+        order = MarketOrder((body.action or "").upper(), body.quantity, tif=body.tif)
     else:  # LMT — guard above ensured one of MKT/LMT
         if body.lmtPrice is None:
             raise APIError(400, "lmtPrice required for LMT", code=CODE_BAD_REQUEST)
-        order = LimitOrder(body.action.upper(), body.quantity, body.lmtPrice, tif=body.tif)
+        order = LimitOrder((body.action or "").upper(), body.quantity, body.lmtPrice, tif=body.tif)
     if body.account:
         order.account = body.account
     log.info("combo_order_submit", symbol=body.symbol, action=body.action, qty=body.quantity)
-    trade = ib.placeOrder(bag, order)
+    async with pacing.guard("orders", f"OPT:{body.symbol}"):
+        trade = ib.placeOrder(bag, order)
     return Trade(**trade_dict(trade))
 
 
 async def exercise_option(body: ExerciseRequest) -> ExerciseResponse:
     ib = await get_ib()
     action_map = {"EXERCISE": 1, "LAPSE": 2}
-    action_code = action_map.get(body.action.upper())
+    action_code = action_map.get((body.action or "").upper())
     if action_code is None:
         raise APIError(
             400,
@@ -415,7 +545,8 @@ async def exercise_option(body: ExerciseRequest) -> ExerciseResponse:
             details={"accepted": list(action_map)},
         )
     contract = contract_factories.by_conid(body.conid)
-    qualified = await ib.qualifyContractsAsync(contract)
+    async with pacing.guard("market_data", f"conid:{body.conid}"):
+        qualified = await ib.qualifyContractsAsync(contract)
     qualified_contract = qualified[0] if qualified else None
     if not isinstance(qualified_contract, Contract):
         raise APIError(
@@ -431,13 +562,14 @@ async def exercise_option(body: ExerciseRequest) -> ExerciseResponse:
         qty=body.quantity,
         account=body.account,
     )
-    ib.exerciseOptions(
-        qualified_contract,
-        exerciseAction=action_code,
-        exerciseQuantity=body.quantity,
-        account=body.account,
-        override=1 if body.override else 0,
-    )
+    async with pacing.guard("orders", f"exercise:{body.conid}"):
+        ib.exerciseOptions(
+            qualified_contract,
+            exerciseAction=action_code,
+            exerciseQuantity=body.quantity,
+            account=body.account,
+            override=1 if body.override else 0,
+        )
     return ExerciseResponse(
         status="submitted",
         contract=contract_dict(qualified_contract),
@@ -463,25 +595,45 @@ def _future(symbol, expiry, exchange, currency, multiplier, trading_class, inclu
 async def get_continuous_future(symbol, exchange, currency) -> ContractDetailsList:
     contract = ContFuture(symbol=symbol, exchange=exchange, currency=currency or "USD")
     ib = await get_ib()
-    details = await ib.reqContractDetailsAsync(contract)
-    return ContractDetailsList(contracts=[contract_details_dict(d) for d in (details or [])])
+
+    async def _fetch() -> list[dict]:
+        async with pacing.guard("market_data", f"contfut:{symbol}:{exchange}"):
+            details = await ib.reqContractDetailsAsync(contract)
+        return [contract_details_dict(d) for d in (details or [])]
+
+    cached, _ = await cache_meta.get_or_fetch(
+        "contract_details", f"CONTFUT:{symbol}:{exchange}:{currency or 'USD'}", _fetch
+    )
+    return ContractDetailsList(contracts=cached)
 
 
 async def list_future_contracts(symbol, exchange, currency, include_expired) -> ContractDetailsList:
     contract = _future(symbol, "", exchange, currency, None, None, include_expired=include_expired)
-    return ContractDetailsList(contracts=await marketdata.contract_details(contract))
+
+    async def _fetch() -> list[dict]:
+        async with pacing.guard("market_data", f"futlist:{symbol}:{exchange}"):
+            return await marketdata.contract_details(contract)
+
+    cached, _ = await cache_meta.get_or_fetch(
+        "futures_expiries", f"FUT:{symbol}:{exchange}:{currency or '*'}:{include_expired}", _fetch
+    )
+    return ContractDetailsList(contracts=cached)
 
 
 async def get_future_contract(
     symbol, expiry, exchange, currency, multiplier, trading_class
 ) -> ContractDetailsList:
     contract = _future(symbol, expiry, exchange, currency, multiplier, trading_class)
-    return ContractDetailsList(contracts=await marketdata.contract_details(contract))
+    return ContractDetailsList(contracts=await _cached_details(contract))
 
 
 async def get_future_tick(symbol, expiry, exchange, currency, multiplier, trading_class) -> Ticker:
     contract = _future(symbol, expiry, exchange, currency, multiplier, trading_class)
-    return Ticker(**await marketdata.snapshot_tick(contract))
+    return Ticker(
+        **await _gated_tick(
+            contract, asset_class="futures", symbol=f"{symbol}_{expiry}" if expiry else symbol
+        )
+    )
 
 
 async def get_future_rates(
@@ -498,13 +650,15 @@ async def get_future_rates(
     trading_class,
 ) -> BarsResponse:
     contract = _future(symbol, expiry, exchange, currency, multiplier, trading_class)
-    bars = await marketdata.historical_bars(
+    bars = await _cached_bars(
         contract,
+        asset_class="futures",
+        symbol=f"{symbol}_{expiry}" if expiry else symbol,
         duration=duration,
         bar_size=bar_size,
-        end_datetime=end_date_time,
-        what_to_show=what_to_show,
-        use_rth=use_r_t_h,
+        end_dt=end_date_time,
+        what=what_to_show,
+        rth=bool(use_r_t_h),
     )
     return BarsResponse(symbol=symbol, secType=SECTYPE_FUT, expiry=expiry, bars=bars)
 
@@ -519,18 +673,7 @@ async def get_future_rates_t_a(
     body: RatesTARequest,
 ) -> RatesTAResponse:
     contract = _future(symbol, expiry, exchange, currency, multiplier, trading_class)
-    return RatesTAResponse(
-        **await marketdata.rates_with_ta(
-            contract,
-            duration=body.duration,
-            bar_size=body.barSize,
-            end_datetime=body.endDateTime,
-            what_to_show=body.whatToShow,
-            use_rth=body.useRTH,
-            indicators=body.indicators,
-            recent_bars=body.recentBars,
-        )
-    )
+    return RatesTAResponse(**await _paced_rates_ta(contract, body))
 
 
 # ─── cfd ───────────────────────────────────────────────────────────
@@ -541,42 +684,33 @@ def _cfd(symbol, exchange, currency):
 
 
 async def get_c_f_d_contract(symbol, exchange, currency) -> ContractDetailsList:
-    return ContractDetailsList(
-        contracts=await marketdata.contract_details(_cfd(symbol, exchange, currency))
-    )
+    return ContractDetailsList(contracts=await _cached_details(_cfd(symbol, exchange, currency)))
 
 
 async def get_c_f_d_tick(symbol, exchange, currency) -> Ticker:
-    return Ticker(**await marketdata.snapshot_tick(_cfd(symbol, exchange, currency)))
+    return Ticker(
+        **await _gated_tick(_cfd(symbol, exchange, currency), asset_class="cfd", symbol=symbol)
+    )
 
 
 async def get_c_f_d_rates(
     symbol, duration, bar_size, end_date_time, what_to_show, use_r_t_h, exchange, currency
 ) -> BarsResponse:
-    bars = await marketdata.historical_bars(
+    bars = await _cached_bars(
         _cfd(symbol, exchange, currency),
+        asset_class="cfd",
+        symbol=symbol,
         duration=duration,
         bar_size=bar_size,
-        end_datetime=end_date_time,
-        what_to_show=what_to_show,
-        use_rth=use_r_t_h,
+        end_dt=end_date_time,
+        what=what_to_show,
+        rth=bool(use_r_t_h),
     )
     return BarsResponse(symbol=symbol, secType=SECTYPE_CFD, bars=bars)
 
 
 async def get_c_f_d_rates_t_a(symbol, exchange, currency, body: RatesTARequest) -> RatesTAResponse:
-    return RatesTAResponse(
-        **await marketdata.rates_with_ta(
-            _cfd(symbol, exchange, currency),
-            duration=body.duration,
-            bar_size=body.barSize,
-            end_datetime=body.endDateTime,
-            what_to_show=body.whatToShow,
-            use_rth=body.useRTH,
-            indicators=body.indicators,
-            recent_bars=body.recentBars,
-        )
-    )
+    return RatesTAResponse(**await _paced_rates_ta(_cfd(symbol, exchange, currency), body))
 
 
 # ─── forex ─────────────────────────────────────────────────────────
@@ -587,39 +721,32 @@ def _forex(pair, exchange):
 
 
 async def get_forex_contract(pair, exchange) -> ContractDetailsList:
-    return ContractDetailsList(contracts=await marketdata.contract_details(_forex(pair, exchange)))
+    return ContractDetailsList(contracts=await _cached_details(_forex(pair, exchange)))
 
 
 async def get_forex_tick(pair, exchange) -> Ticker:
-    return Ticker(**await marketdata.snapshot_tick(_forex(pair, exchange)))
+    return Ticker(**await _gated_tick(_forex(pair, exchange), asset_class="forex", symbol=pair))
 
 
 async def get_forex_rates(
     pair, duration, bar_size, end_date_time, what_to_show, use_r_t_h, exchange
 ) -> BarsResponse:
-    bars = await marketdata.historical_bars(
+    bars = await _cached_bars(
         _forex(pair, exchange),
+        asset_class="forex",
+        symbol=pair,
         duration=duration,
         bar_size=bar_size,
-        end_datetime=end_date_time,
-        what_to_show=what_to_show,
-        use_rth=use_r_t_h,
+        end_dt=end_date_time,
+        what=what_to_show,
+        rth=bool(use_r_t_h),
     )
     return BarsResponse(pair=pair, secType=SECTYPE_CASH, bars=bars)
 
 
 async def get_forex_rates_t_a(pair, exchange, body: RatesTARequest) -> RatesTAResponse:
     return RatesTAResponse(
-        **await marketdata.rates_with_ta(
-            _forex(pair, exchange),
-            duration=body.duration,
-            bar_size=body.barSize,
-            end_datetime=body.endDateTime,
-            what_to_show=body.whatToShow or "MIDPOINT",
-            use_rth=body.useRTH,
-            indicators=body.indicators,
-            recent_bars=body.recentBars,
-        )
+        **await _paced_rates_ta(_forex(pair, exchange), body, default_what="MIDPOINT")
     )
 
 
@@ -631,42 +758,35 @@ def _crypto(symbol, exchange, currency):
 
 
 async def get_crypto_contract(symbol, exchange, currency) -> ContractDetailsList:
-    return ContractDetailsList(
-        contracts=await marketdata.contract_details(_crypto(symbol, exchange, currency))
-    )
+    return ContractDetailsList(contracts=await _cached_details(_crypto(symbol, exchange, currency)))
 
 
 async def get_crypto_tick(symbol, exchange, currency) -> Ticker:
-    return Ticker(**await marketdata.snapshot_tick(_crypto(symbol, exchange, currency)))
+    return Ticker(
+        **await _gated_tick(
+            _crypto(symbol, exchange, currency), asset_class="crypto", symbol=symbol
+        )
+    )
 
 
 async def get_crypto_rates(
     symbol, duration, bar_size, end_date_time, what_to_show, use_r_t_h, exchange, currency
 ) -> BarsResponse:
-    bars = await marketdata.historical_bars(
+    bars = await _cached_bars(
         _crypto(symbol, exchange, currency),
+        asset_class="crypto",
+        symbol=symbol,
         duration=duration,
         bar_size=bar_size,
-        end_datetime=end_date_time,
-        what_to_show=what_to_show,
-        use_rth=use_r_t_h,
+        end_dt=end_date_time,
+        what=what_to_show,
+        rth=bool(use_r_t_h),
     )
     return BarsResponse(symbol=symbol, secType=SECTYPE_CRYPTO, bars=bars)
 
 
 async def get_crypto_rates_t_a(symbol, exchange, currency, body: RatesTARequest) -> RatesTAResponse:
-    return RatesTAResponse(
-        **await marketdata.rates_with_ta(
-            _crypto(symbol, exchange, currency),
-            duration=body.duration,
-            bar_size=body.barSize,
-            end_datetime=body.endDateTime,
-            what_to_show=body.whatToShow,
-            use_rth=body.useRTH,
-            indicators=body.indicators,
-            recent_bars=body.recentBars,
-        )
-    )
+    return RatesTAResponse(**await _paced_rates_ta(_crypto(symbol, exchange, currency), body))
 
 
 # ─── orders ────────────────────────────────────────────────────────
@@ -781,7 +901,9 @@ async def list_orders() -> TradesList:
 async def place_order(body: OrderRequest) -> Trade:
     ib = await get_ib()
     contract = _build_contract_from_request(body)
-    qualified = await ib.qualifyContractsAsync(contract)
+    key = f"{body.assetClass}:{body.symbol}"
+    async with pacing.guard("orders", key):
+        qualified = await ib.qualifyContractsAsync(contract)
     first = qualified[0] if qualified else None
     if not isinstance(first, Contract):
         raise APIError(
@@ -799,7 +921,8 @@ async def place_order(body: OrderRequest) -> Trade:
         qty=body.quantity,
         orderType=body.orderType,
     )
-    trade = ib.placeOrder(first, order)
+    async with pacing.guard("orders", key):
+        trade = ib.placeOrder(first, order)
     return Trade(**trade_dict(trade))
 
 
@@ -818,7 +941,8 @@ async def cancel_order(order_id: int) -> CancelOrderResponse:
     for trade in ib.openTrades():
         if trade.order.orderId == order_id:
             log.info("order_cancel", orderId=order_id)
-            ib.cancelOrder(trade.order)
+            async with pacing.guard("orders", f"cancel:{order_id}"):
+                ib.cancelOrder(trade.order)
             return CancelOrderResponse(status="cancelling", orderId=order_id)
     raise APIError(404, "Order not open", code=CODE_NOT_FOUND, details={"orderId": order_id})
 
@@ -826,7 +950,8 @@ async def cancel_order(order_id: int) -> CancelOrderResponse:
 async def cancel_all_orders() -> CancelAllResponse:
     ib = await get_ib()
     log.warning("global_cancel_requested")
-    ib.reqGlobalCancel()
+    async with pacing.guard("orders", "global_cancel"):
+        ib.reqGlobalCancel()
     return CancelAllResponse(status="global_cancel_requested")
 
 
@@ -837,40 +962,43 @@ async def get_executions(
     account, client_id, sec_type, symbol, exchange, side, time_after
 ) -> ExecutionsResponse:
     ib = await get_ib()
-    fills = await ib.reqExecutionsAsync(
-        ExecutionFilter(
-            clientId=client_id or 0,
-            acctCode=account or "",
-            time=time_after or "",
-            symbol=symbol or "",
-            secType=sec_type or "",
-            exchange=exchange or "",
-            side=side or "",
+    async with pacing.guard("market_data", f"executions:{account or '*'}"):
+        fills = await ib.reqExecutionsAsync(
+            ExecutionFilter(
+                clientId=client_id or 0,
+                acctCode=account or "",
+                time=time_after or "",
+                symbol=symbol or "",
+                secType=sec_type or "",
+                exchange=exchange or "",
+                side=side or "",
+            )
         )
-    )
-    return ExecutionsResponse(
-        fills=[
-            {
-                "contract": contract_dict(f.contract),
-                "execution": _coerce(f.execution),
-                "commissionReport": (_coerce(f.commissionReport) if f.commissionReport else None),
-                "time": (f.time.isoformat() if isinstance(f.time, datetime) else str(f.time)),
-            }
-            for f in (fills or [])
-        ]
-    )
+    fill_dicts = [
+        {
+            "contract": contract_dict(f.contract),
+            "execution": _coerce(f.execution),
+            "commissionReport": (_coerce(f.commissionReport) if f.commissionReport else None),
+            "time": (f.time.isoformat() if isinstance(f.time, datetime) else str(f.time)),
+        }
+        for f in (fills or [])
+    ]
+    # Append-only ledger — grow the goldmine on every call.
+    await exec_history.record_executions(fill_dicts)
+    return ExecutionsResponse(fills=fill_dicts)
 
 
 async def get_completed_orders(api_only: bool) -> CompletedOrdersResponse:
     ib = await get_ib()
-    completed = await ib.reqCompletedOrdersAsync(apiOnly=api_only)
-    return CompletedOrdersResponse(
-        trades=[
-            {
-                "contract": contract_dict(t.contract),
-                "order": _coerce(t.order),
-                "orderStatus": _coerce(t.orderStatus),
-            }
-            for t in (completed or [])
-        ]
-    )
+    async with pacing.guard("market_data", f"completed:{api_only}"):
+        completed = await ib.reqCompletedOrdersAsync(apiOnly=api_only)
+    trade_dicts = [
+        {
+            "contract": contract_dict(t.contract),
+            "order": _coerce(t.order),
+            "orderStatus": _coerce(t.orderStatus),
+        }
+        for t in (completed or [])
+    ]
+    await exec_history.record_completed_orders(trade_dicts)
+    return CompletedOrdersResponse(trades=trade_dicts)
