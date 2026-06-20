@@ -1,0 +1,43 @@
+{# ────────────────────────────────────────────────────────────────────
+   Per-tag router template — fastapi-code-generator modular mode.
+
+   Customizations over upstream:
+   - `async def` on every handler (project is asyncio + ib_async; sync
+     would block the event loop on every IBKR call).
+   - Bodies delegate to `impl.<operationId>(**kwargs)` — generated file
+     stays a thin wiring shim, all logic lives in hand-written impl.
+   - Drop the `pass` placeholder + the docstring noise.
+   ──────────────────────────────────────────────────────────────────── #}
+from __future__ import annotations
+
+from fastapi import APIRouter
+
+from ..dependencies import *
+from ibkrapi.api import impl
+
+router = APIRouter(tags=['{{tag}}'])
+
+{% for operation in operations %}
+{% if operation.tags[0] == tag %}
+@router.{{operation.type}}('{{operation.path}}', response_model={{operation.response}}
+    {% if operation.status_code %}
+    , status_code={{operation.status_code}}
+    {% endif %}
+    {% if operation.additional_responses %}
+        , responses={
+            {% for status_code, models in operation.additional_responses.items() %}
+                '{{ status_code }}': {
+                {% for key, model in models.items() %}
+                    '{{ key }}': {{ model }}{% if not loop.last %},{% endif %}
+                {% endfor %}
+                }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        }
+    {% endif %}
+    {% if operation.tags %}
+    , tags={{operation.tags}}
+    {% endif %})
+async def {{operation.function_name}}({{operation.snake_case_arguments}}) -> {{operation.return_type}}:
+    return await impl.{{operation.function_name}}({{operation.plain_arguments}})
+{% endif %}
+{% endfor %}

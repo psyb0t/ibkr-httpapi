@@ -1,0 +1,11 @@
+# Direct deps for ibkr-httpapi.
+# Bumped via `make pkg-update` — pins must remain ≥7 days old (supply-chain age-gate).
+fastapi==0.136.3
+# Pinned directly to ≥1.3.1 to dodge GHSA-82w8-qh3p-5jfq (DoS via
+# request.form() ignoring limits on application/x-www-form-urlencoded).
+# fastapi 0.136.3 requires starlette>=0.46.0 — 1.3.1 satisfies.
+starlette==1.3.1
+uvicorn[standard]==0.49.0
+pydantic==2.13.4
+PyYAML==6.0.3
+ib_async==2.1.0

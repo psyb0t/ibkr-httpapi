@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1.7
+# Dev container — lint / format / test. Adds tooling on top of the
+# hash-locked runtime deps so dev work uses the same lib versions as prod.
+# python:3.12-slim-bookworm digest captured 2026-06-19
+FROM python@sha256:76d4b7b6305788c6b4c6a19d6a22a3921bf802e9af4d5e1e5bd771208dba74bf
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential git make curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m venv "$VIRTUAL_ENV"
+
+COPY requirements.txt requirements-dev.txt ./
+RUN pip install --no-cache-dir --require-hashes -r requirements.txt \
+    && pip install --no-cache-dir -r requirements-dev.txt
+
+# Go toolchain + oapi-codegen for `make generate-client-go`.
+# Pinned Go version + pinned oapi-codegen tag — bump both intentionally.
+ENV GO_VERSION=1.25.5 \
+    OAPI_CODEGEN_VERSION=v2.7.1 \
+    GOPATH=/go \
+    PATH="/usr/local/go/bin:/go/bin:/opt/venv/bin:$PATH"
+RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tar.gz \
+    && tar -C /usr/local -xzf /tmp/go.tar.gz \
+    && rm /tmp/go.tar.gz \
+    && go install "github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@${OAPI_CODEGEN_VERSION}" \
+    && go clean -cache -modcache
+
+CMD ["bash"]

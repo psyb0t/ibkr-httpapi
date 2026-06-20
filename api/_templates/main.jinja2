@@ -1,0 +1,25 @@
+{# ────────────────────────────────────────────────────────────────────
+   Main template — kept minimal. The real FastAPI app lives in
+   `ibkrapi/server.py` (with auth middleware, error handlers, lifespan).
+   This generated `main.py` is only used by fastapi-codegen's bootstrap;
+   we don't import it. See `ibkrapi/api/wiring.py` for how routers get
+   mounted into the real app.
+   ──────────────────────────────────────────────────────────────────── #}
+from __future__ import annotations
+
+from fastapi import FastAPI
+
+from .routers import {{ routers | join(", ") }}
+
+app = FastAPI(
+    {% if info %}
+    {% for key, value in info.items() %}
+    {{ key }} = {{ value.__repr__() }},
+    {% endfor %}
+    {% endif %}
+)
+
+{% for router in routers -%}
+app.include_router({{ router }}.router)
+{% endfor -%}
+{{ imports }}

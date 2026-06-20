@@ -1,0 +1,276 @@
+# Copy to docker-compose.yml. The gateway image MUST be built locally per
+# IBKR licensing (do not redistribute pre-built images containing IB
+# binaries). The gnzsnz/ib-gateway-docker upstream is the reference build;
+# pin a tag from it OR wrap it with a thin Dockerfile that pulls the IBC
+# config in.
+#
+# This compose assumes:
+#   - You have built / pulled an IB Gateway image into IBKR_GATEWAY_IMAGE
+#   - You have created a config/config.yaml from config.yaml.example
+#   - IBKR credentials are NOT baked into the image — pass at run time via
+#     the env file `.env.ibkr` (gitignored).
+#
+# Hardening shape — per ~/.claude/rule-details/hardening-containers.md
+# (compose orchestration section):
+#   - Loopback-only port publishing by default (override API_HOST_PORT bind
+#     IP via the nginx ports entry if you want public exposure)
+#   - Isolated networks: front (nginx + api), backend (api + ibgateway —
+#     ibgateway needs IBKR cloud egress), internal: true (api + wickworks
+#     — wickworks has zero egress)
+#   - cap_drop:[ALL] + no-new-privileges everywhere
+#   - read_only fs + tmpfs(noexec,nosuid) for ephemeral writes
+#   - Resource caps (memory, cpus, pids) on every service
+#   - Logging caps to prevent disk-fill DoS
+#   - Healthchecks + depends_on: service_healthy
+#   - All images pinned (digest for public images; local-built for app +
+#     gateway + wickworks)
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  ibgateway:
+    # IBKR licensing forbids redistributing pre-built images with the IB
+    # installer binary. Build locally OR pin a digest from a private
+    # registry. The :stable default below is mutable — override
+    # IBKR_GATEWAY_IMAGE with `image@sha256:...` for prod.
+    image: ${IBKR_GATEWAY_IMAGE:-ghcr.io/gnzsnz/ib-gateway:stable}
+    container_name: ibkr-httpapi-gateway
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env.ibkr     # TWS_USERID, TWS_PASSWORD, TRADING_MODE=paper|live, ...
+    environment:
+      TIME_ZONE: "Etc/UTC"
+      VNC_SERVER_PASSWORD: ""
+      TWOFA_TIMEOUT_ACTION: "restart"
+      AUTO_RESTART_TIME: "11:59 PM"
+      RELOGIN_AFTER_TWOFA_TIMEOUT: "yes"
+    ports:
+      - "127.0.0.1:5900:5900"
+      - "127.0.0.1:8001:8001"
+    volumes:
+      - ./.data/ibgateway:/home/ibgateway/Jts
+    networks:
+      - backend
+    # NOTE: cannot run read_only / drop all caps here — the gnzsnz image
+    # runs Xvfb + JVM + IBC under a shell entrypoint that writes across
+    # the filesystem. no-new-privileges is the floor that costs nothing.
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "sh", "-c", "ss -ltn | grep -E ':(4001|4002)'"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1.5g
+          cpus: "1.5"
+          pids: 200
+
+    logging: *default-logging
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: ibkr-httpapi:local
+    container_name: ibkr-httpapi-api
+    restart: unless-stopped
+    init: true
+    depends_on:
+      ibgateway:
+        condition: service_healthy
+    environment:
+      API_HOST: "0.0.0.0"
+      API_PORT: "8889"
+      IBKR_GATEWAY_HOST: "ibgateway"
+      IBKR_GATEWAY_PORT: "${IBKR_GATEWAY_PORT:-4002}"
+      IBKR_CLIENT_ID: "1"
+      WICKWORKS_URL: "${WICKWORKS_URL:-}"
+      API_TOKEN: "${API_TOKEN:-}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+    expose:
+      - "8889"
+    # api bridges all three networks: front (nginx reaches it), backend
+    # (reaches ibgateway over TWS socket), internal (reaches wickworks
+    # without giving wickworks egress).
+    networks:
+      - front
+      - backend
+      - internal
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /run:rw,noexec,nosuid,size=8m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+          pids: 100
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8889/v1/ping', timeout=2)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *default-logging
+
+  # nginx 1.27-alpine digest captured 2026-06-19
+  nginx:
+    image: nginx@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+    container_name: ibkr-httpapi-nginx
+    restart: unless-stopped
+    init: true
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - ./.data/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    # DEFAULT BIND = LOOPBACK. Override API_HOST_BIND to "0.0.0.0" only
+    # when you genuinely want public exposure AND have a TLS terminator
+    # in front (cloudflared, traefik, real cert) OR you're on a tailnet.
+    ports:
+      - "${API_HOST_BIND:-127.0.0.1}:${API_HOST_PORT:-8889}:80"
+    networks:
+      - front
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=8m
+      - /var/cache/nginx:rw,size=16m
+      - /var/run:rw,size=8m
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+          cpus: "0.5"
+          pids: 64
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--spider", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    logging: *default-logging
+
+  # Optional — wickworks TA sidecar. Built locally (no public registry
+  # image). When you push to a registry, swap the tag for an @sha256
+  # digest pin per the supply-chain rule.
+  wickworks:
+    image: psyb0t/docker-wickworks:latest
+    container_name: ibkr-httpapi-wickworks
+    restart: unless-stopped
+    init: true
+    expose:
+      - "8000"
+    # internal: true network — wickworks has NO egress. It only receives
+    # POSTs from api and serves /health. Tighter isolation than the
+    # default bridge would give.
+    networks:
+      - internal
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+          pids: 100
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--spider", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    logging: *default-logging
+
+  # Optional — cloudflared tunnel sidecar (public exposure without
+  # opening a host port). Point your cloudflared ingress at
+  # http://nginx:80 — the sidecar joins the `front` network so it
+  # reaches nginx by service name. Drop creds + config in
+  # ./.data/cloudflared/. Once enabled you typically want to FLIP
+  # nginx's host bind back to loopback-only (default already does)
+  # so the only public path is via the tunnel.
+  # cloudflared:
+  #   image: cloudflare/cloudflared:2026.3.0
+  #   container_name: ibkr-httpapi-cloudflared
+  #   restart: unless-stopped
+  #   init: true
+  #   command: tunnel --config /etc/cloudflared/config.yml run
+  #   volumes:
+  #     - ./.data/cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+  #     - ./.data/cloudflared/creds.json:/etc/cloudflared/creds.json:ro
+  #   networks:
+  #     - front
+  #   depends_on:
+  #     nginx:
+  #       condition: service_healthy
+  #   cap_drop:
+  #     - ALL
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   read_only: true
+  #   tmpfs:
+  #     - /tmp:rw,noexec,nosuid,size=8m
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 128m
+  #         cpus: "0.5"
+  #         pids: 64
+  #   logging: *default-logging
+
+  # Optional — tailscale sidecar.
+  # tailscale:
+  #   image: tailscale/tailscale:latest
+  #   container_name: ibkr-httpapi-tailscale
+  #   hostname: ibkr-httpapi
+  #   environment:
+  #     TS_AUTHKEY: "${TS_AUTHKEY}"
+  #     TS_EXTRA_ARGS: "${TS_EXTRA_ARGS:-}"
+  #     TS_STATE_DIR: "/var/lib/tailscale"
+  #     TS_USERSPACE: "true"
+  #   volumes:
+  #     - ./.data/tailscale/state:/var/lib/tailscale
+  #   restart: unless-stopped
+  #   logging: *default-logging
+
+networks:
+  front:
+    driver: bridge
+  backend:
+    driver: bridge
+  internal:
+    driver: bridge
+    internal: true   # no egress, no published ports possible

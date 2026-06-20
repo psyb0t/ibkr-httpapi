@@ -1,0 +1,63 @@
+# Claude / agent scratch — never commit
+CLAUDE.md
+CLAUDE.local.md
+.research_files/
+.agent_knowledge/
+PLAN.md
+implplan.md
+NOTES.md
+TODO.md
+WIP.md
+review.md
+ANUSTIMES.md
+
+# Secrets
+.env
+.env.local
+.env.*
+!.env.example
+!.env.ibkr.example
+
+# Per-project runtime state
+docker-compose.yml
+config/config.yaml
+config/jts.ini
+config/tws.xml
+config/ibgateway/
+secrets/
+.data/
+logs/
+run.log
+nginx/nginx.conf
+
+# Test / profile / coverage artifacts
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.cover/
+
+# Python / editor / IDE
+__pycache__/
+*.pyc
+*.pyo
+.python-version
+.venv/
+.envrc
+.tool-versions
+.nvmrc
+pyrightconfig.json
+.vscode/
+.idea/
+.mypy_cache/
+.ruff_cache/
+
+# Release scratch
+commit.sh
+git-update.sh
+fix.sh
+.refactor/
+.anustimes/
+
+# Brutal-review audit logs
+.brutal_reviews/

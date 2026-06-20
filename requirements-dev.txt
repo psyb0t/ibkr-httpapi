@@ -1,0 +1,17 @@
+# Dev-only tooling. NOT hash-locked — lives only in the dev container
+# (Dockerfile.dev), never in the prod image. Versions kept loose so dev
+# tools can update without churning the prod lockfile.
+ruff==0.13.0
+pyright==1.1.408
+bandit==1.8.6
+pytest==8.4.2
+pytest-asyncio==1.2.0
+pytest-cov==7.0.0
+httpx==0.28.1
+# starlette ≥1.3 testclient requires httpx2 instead of httpx (deprecation
+# became hard fail under our pytest filterwarnings=error gate).
+httpx2==2.4.0
+fastapi-code-generator==0.7.0
+datamodel-code-generator==0.59.1
+openapi-python-client==0.29.0
+pip-audit==2.7.3

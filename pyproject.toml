@@ -1,0 +1,68 @@
+[project]
+name = "ibkr-httpapi"
+version = "0.1.0"
+description = "HTTP wrapper over IBKR via ib_async"
+requires-python = ">=3.12"
+
+# Supply-chain age-gate — fixed timestamp (NOT a sliding window). Bumped
+# by `scripts/bump_exclude_newer.sh` to today_utc_midnight - 7 days on
+# every dep mutation (pkg-add / pkg-update / pkg-upgrade / pkg-remove).
+# Frozen between mutations so re-locks under the same gate are reproducible.
+# Source of truth for `make pkg-lock` (Makefile greps this value).
+[tool.uv]
+exclude-newer = "2026-06-13T00:00:00Z"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["ibkrapi", "tests"]
+extend-exclude = ["ibkrapi/api/_generated"]   # do not lint-fix generated code
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "S",    # flake8-bandit
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "E501",   # line length handled by formatter, not linter
+    "S101",   # asserts allowed (tests)
+    "B008",   # FastAPI uses Depends/Query/Body in defaults — required pattern
+    "SIM117", # nested with-blocks sometimes clearer than combined
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S107"]   # hardcoded test tokens are fine
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pyright]
+include = ["ibkrapi", "tests"]
+exclude = ["**/__pycache__", ".venv", "build"]
+pythonVersion = "3.12"
+reportMissingImports = "warning"
+reportMissingTypeStubs = "none"
+reportUnknownMemberType = "none"
+reportUnknownVariableType = "none"
+reportUnknownArgumentType = "none"
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "build"]
+skips = [
+    "B101",   # asserts (tests + Pydantic model_validator patterns)
+    "B404",   # importing subprocess (we use it for tini-style PID 1 stuff)
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = ["error"]

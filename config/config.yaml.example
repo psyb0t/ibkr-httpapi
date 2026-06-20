@@ -1,0 +1,90 @@
+# IBKR HTTP API — single config file.
+# Copy to config/config.yaml and fill in your values.
+# config.yaml is gitignored; this example is the committed template.
+
+# Bearer token for API auth. Empty string = no auth (open to anyone on the network).
+api_token: ""
+
+# IBKR Gateway connection.
+# host: where the gateway listens. Inside the compose net this is the
+#   service name "ibgateway". From the host it's 127.0.0.1.
+# port: 4001 = live, 4002 = paper (IB Gateway). TWS uses 7496/7497.
+# client_id: unique integer per concurrent connection on the same login.
+#   Each connection holds its own message stream — re-use will boot the
+#   prior client. Pick something stable (e.g. 1) for the main API process.
+# account: the IBKR account number this process trades against (U... live,
+#   DU... paper). Optional — if empty, uses the gateway's default. Required
+#   if the login has multiple linked accounts and you want deterministic
+#   routing.
+gateway:
+  host: "ibgateway"
+  port: 4002
+  client_id: 1
+  account: ""
+  connect_timeout: "20s"
+  # Auto-reconnect window after the daily gateway restart (Sunday 01:00 ET).
+  # IB Gateway 974+ + IBC 3.15+ handles the restart itself; the API just
+  # needs to re-establish the socket once it's back.
+  reconnect_backoff: "5s"
+  reconnect_max_backoff: "60s"
+
+# IBC (IB Controller) — auto-login bot for IB Gateway. Used by the
+# Dockerfile.gateway build to populate the Gateway's saved settings so
+# it logs in unattended on boot. NEVER commit a populated config.yaml
+# with real credentials — keep them in a secrets file or env vars and
+# inject at compose-up time.
+ibkr_login:
+  username: ""           # IBKR login (or set IBKR_USERNAME env at run time)
+  password: ""           # IBKR password (or set IBKR_PASSWORD env at run time)
+  trading_mode: "paper"  # "paper" or "live"
+  # Optional Two-Factor handling. IBKR uses mobile push by default.
+  # If you set "ibkey", IBC will accept the push automatically as long as
+  # the IBKR Mobile app is paired. For seamless headless operation, enable
+  # "Read-Only API" + IBKR Mobile pairing on your IBKR account.
+  read_only_api: false
+
+# Market data type. ib_async.reqMarketDataType:
+#   1 = live (requires OPRA / per-exchange subscription)
+#   2 = frozen (last live value when market closed; needs subs)
+#   3 = delayed (15-20 min, free)
+#   4 = delayed-frozen (free, last delayed value when closed)
+# Set to 3 if you have NO OPRA subscription. Set to 1 if you pay for the
+# US Securities Snapshot and Futures Value Bundle + OPRA.
+market_data_type: 1
+
+# Wickworks TA sidecar — used by POST /<asset_class>/<symbol>/rates/ta.
+# Same wickworks build the mt5-httpapi project uses. Leave url empty to
+# disable the TA endpoint entirely; it returns 503 with a clear message.
+wickworks:
+  url: "http://wickworks:8000/"
+  timeout: "30s"
+
+tailscale:
+  auth_key: ""       # leave empty to disable the tailscale sidecar entirely
+  login_server: ""   # Headscale login server URL; empty = Tailscale cloud
+
+# Default contract overrides applied when a request omits the field.
+# Lets you set "exchange: SMART, currency: USD" once instead of on every
+# /stocks/AAPL call.
+contract_defaults:
+  stocks:
+    exchange: "SMART"
+    currency: "USD"
+  options:
+    exchange: "SMART"
+    currency: "USD"
+    multiplier: "100"
+  futures:
+    exchange: ""    # MUST be explicit per contract (CME, NYMEX, GLOBEX, ...)
+    currency: "USD"
+  cfd:
+    exchange: "SMART"
+    currency: "USD"
+  forex:
+    exchange: "IDEALPRO"
+  crypto:
+    exchange: "PAXOS"
+    currency: "USD"
+  index:
+    exchange: "CBOE"
+    currency: "USD"

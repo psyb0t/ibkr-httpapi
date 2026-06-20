@@ -1,0 +1,57 @@
+# syntax=docker/dockerfile:1.7
+# Tiny noVNC websockify proxy. Fronts an external VNC server
+# (the IB Gateway's :5900) over HTTP/WebSocket so the user can
+# connect from a browser without a native VNC client. Same UX as
+# mt5-httpapi's dockurr/windows noVNC on :8006.
+#
+# python:3.12-slim-bookworm digest captured 2026-06-19
+FROM python@sha256:76d4b7b6305788c6b4c6a19d6a22a3921bf802e9af4d5e1e5bd771208dba74bf
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    NOVNC_VERSION=1.4.0 \
+    NUMPY_VERSION=2.2.1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl tini \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir "numpy==${NUMPY_VERSION}" "websockify==0.13.0" \
+    && curl -fsSL "https://github.com/novnc/noVNC/archive/refs/tags/v${NOVNC_VERSION}.tar.gz" -o /tmp/novnc.tgz \
+    && mkdir -p /opt/novnc \
+    && tar -xzf /tmp/novnc.tgz -C /opt/novnc --strip-components=1 \
+    && rm /tmp/novnc.tgz \
+    && groupadd -r app && useradd -r -g app app \
+    && chown -R app:app /opt/novnc
+
+EXPOSE 8080
+
+ENV VNC_TARGET=ibgateway:5900 \
+    LISTEN_PORT=8080 \
+    VNC_PASSWORD=""
+
+# Entrypoint templates the password into index.html so the browser
+# opens straight into vnc.html with autoconnect + password preloaded —
+# no prompt. Password is still required by x11vnc; we just inject it
+# transparently so the operator doesn't type it every time.
+COPY --chown=app:app <<'ENTRY' /entrypoint.sh
+#!/bin/sh
+set -eu
+# noVNC reads ?password=... as the raw VNC password (URL-decoded).
+# URL-encode it so special chars survive.
+pw_enc="$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["VNC_PASSWORD"], safe=""))')"
+cat > /opt/novnc/index.html <<HTML
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="refresh" content="0;url=vnc.html?autoconnect=true&resize=scale&reconnect=true&password=${pw_enc}">
+<title>ibkr-httpapi noVNC</title>
+</head><body>Loading IB Gateway desktop…</body></html>
+HTML
+exec websockify --web=/opt/novnc "${LISTEN_PORT}" "${VNC_TARGET}"
+ENTRY
+RUN chmod +x /entrypoint.sh
+
+USER app
+
+ENTRYPOINT ["tini", "--"]
+CMD ["/entrypoint.sh"]
