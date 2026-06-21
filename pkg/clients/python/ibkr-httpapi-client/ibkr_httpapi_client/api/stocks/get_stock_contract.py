@@ -17,8 +17,8 @@ def _get_kwargs(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> dict[str, Any]:
-
     params: dict[str, Any] = {}
 
     json_exchange: None | str | Unset
@@ -41,6 +41,8 @@ def _get_kwargs(
     else:
         json_primary_exchange = primary_exchange
     params["primaryExchange"] = json_primary_exchange
+
+    params["refresh"] = refresh
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -68,6 +70,11 @@ def _parse_response(
 
         return response_404
 
+    if response.status_code == 429:
+        response_429 = ErrorEnvelope.from_dict(response.json())
+
+        return response_429
+
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
     else:
@@ -92,6 +99,7 @@ def sync_detailed(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> Response[ContractDetailsList | ErrorEnvelope]:
     """Stock contract details.
 
@@ -100,6 +108,7 @@ def sync_detailed(
         exchange (None | str | Unset):
         currency (None | str | Unset):
         primary_exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -114,6 +123,7 @@ def sync_detailed(
         exchange=exchange,
         currency=currency,
         primary_exchange=primary_exchange,
+        refresh=refresh,
     )
 
     response = client.get_httpx_client().request(
@@ -130,6 +140,7 @@ def sync(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> ContractDetailsList | ErrorEnvelope | None:
     """Stock contract details.
 
@@ -138,6 +149,7 @@ def sync(
         exchange (None | str | Unset):
         currency (None | str | Unset):
         primary_exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -153,6 +165,7 @@ def sync(
         exchange=exchange,
         currency=currency,
         primary_exchange=primary_exchange,
+        refresh=refresh,
     ).parsed
 
 
@@ -163,6 +176,7 @@ async def asyncio_detailed(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> Response[ContractDetailsList | ErrorEnvelope]:
     """Stock contract details.
 
@@ -171,6 +185,7 @@ async def asyncio_detailed(
         exchange (None | str | Unset):
         currency (None | str | Unset):
         primary_exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -185,6 +200,7 @@ async def asyncio_detailed(
         exchange=exchange,
         currency=currency,
         primary_exchange=primary_exchange,
+        refresh=refresh,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -199,6 +215,7 @@ async def asyncio(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> ContractDetailsList | ErrorEnvelope | None:
     """Stock contract details.
 
@@ -207,6 +224,7 @@ async def asyncio(
         exchange (None | str | Unset):
         currency (None | str | Unset):
         primary_exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -223,5 +241,6 @@ async def asyncio(
             exchange=exchange,
             currency=currency,
             primary_exchange=primary_exchange,
+            refresh=refresh,
         )
     ).parsed

@@ -7,6 +7,7 @@ import httpx
 from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.bars_response import BarsResponse
+from ...models.error_envelope import ErrorEnvelope
 from ...types import UNSET, Response, Unset
 
 
@@ -19,8 +20,8 @@ def _get_kwargs(
     what_to_show: None | str | Unset = UNSET,
     use_rth: bool | Unset = False,
     exchange: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> dict[str, Any]:
-
     params: dict[str, Any] = {}
 
     params["duration"] = duration
@@ -55,6 +56,8 @@ def _get_kwargs(
         json_exchange = exchange
     params["exchange"] = json_exchange
 
+    params["refresh"] = refresh
+
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
     _kwargs: dict[str, Any] = {
@@ -68,11 +71,18 @@ def _get_kwargs(
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> BarsResponse | None:
+def _parse_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> BarsResponse | ErrorEnvelope | None:
     if response.status_code == 200:
         response_200 = BarsResponse.from_dict(response.json())
 
         return response_200
+
+    if response.status_code == 429:
+        response_429 = ErrorEnvelope.from_dict(response.json())
+
+        return response_429
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -80,7 +90,9 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[BarsResponse]:
+def _build_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[BarsResponse | ErrorEnvelope]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -99,7 +111,8 @@ def sync_detailed(
     what_to_show: None | str | Unset = UNSET,
     use_rth: bool | Unset = False,
     exchange: None | str | Unset = UNSET,
-) -> Response[BarsResponse]:
+    refresh: bool | Unset = False,
+) -> Response[BarsResponse | ErrorEnvelope]:
     """
     Args:
         pair (str):
@@ -109,13 +122,14 @@ def sync_detailed(
         what_to_show (None | str | Unset): TRADES / MIDPOINT / BID / ASK / ...
         use_rth (bool | Unset):  Default: False.
         exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[BarsResponse]
+        Response[BarsResponse | ErrorEnvelope]
     """
 
     kwargs = _get_kwargs(
@@ -126,6 +140,7 @@ def sync_detailed(
         what_to_show=what_to_show,
         use_rth=use_rth,
         exchange=exchange,
+        refresh=refresh,
     )
 
     response = client.get_httpx_client().request(
@@ -145,7 +160,8 @@ def sync(
     what_to_show: None | str | Unset = UNSET,
     use_rth: bool | Unset = False,
     exchange: None | str | Unset = UNSET,
-) -> BarsResponse | None:
+    refresh: bool | Unset = False,
+) -> BarsResponse | ErrorEnvelope | None:
     """
     Args:
         pair (str):
@@ -155,13 +171,14 @@ def sync(
         what_to_show (None | str | Unset): TRADES / MIDPOINT / BID / ASK / ...
         use_rth (bool | Unset):  Default: False.
         exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        BarsResponse
+        BarsResponse | ErrorEnvelope
     """
 
     return sync_detailed(
@@ -173,6 +190,7 @@ def sync(
         what_to_show=what_to_show,
         use_rth=use_rth,
         exchange=exchange,
+        refresh=refresh,
     ).parsed
 
 
@@ -186,7 +204,8 @@ async def asyncio_detailed(
     what_to_show: None | str | Unset = UNSET,
     use_rth: bool | Unset = False,
     exchange: None | str | Unset = UNSET,
-) -> Response[BarsResponse]:
+    refresh: bool | Unset = False,
+) -> Response[BarsResponse | ErrorEnvelope]:
     """
     Args:
         pair (str):
@@ -196,13 +215,14 @@ async def asyncio_detailed(
         what_to_show (None | str | Unset): TRADES / MIDPOINT / BID / ASK / ...
         use_rth (bool | Unset):  Default: False.
         exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[BarsResponse]
+        Response[BarsResponse | ErrorEnvelope]
     """
 
     kwargs = _get_kwargs(
@@ -213,6 +233,7 @@ async def asyncio_detailed(
         what_to_show=what_to_show,
         use_rth=use_rth,
         exchange=exchange,
+        refresh=refresh,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -230,7 +251,8 @@ async def asyncio(
     what_to_show: None | str | Unset = UNSET,
     use_rth: bool | Unset = False,
     exchange: None | str | Unset = UNSET,
-) -> BarsResponse | None:
+    refresh: bool | Unset = False,
+) -> BarsResponse | ErrorEnvelope | None:
     """
     Args:
         pair (str):
@@ -240,13 +262,14 @@ async def asyncio(
         what_to_show (None | str | Unset): TRADES / MIDPOINT / BID / ASK / ...
         use_rth (bool | Unset):  Default: False.
         exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        BarsResponse
+        BarsResponse | ErrorEnvelope
     """
 
     return (
@@ -259,5 +282,6 @@ async def asyncio(
             what_to_show=what_to_show,
             use_rth=use_rth,
             exchange=exchange,
+            refresh=refresh,
         )
     ).parsed

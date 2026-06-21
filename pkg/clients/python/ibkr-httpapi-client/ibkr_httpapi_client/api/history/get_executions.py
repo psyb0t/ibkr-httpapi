@@ -5,6 +5,7 @@ import httpx
 
 from ... import errors
 from ...client import AuthenticatedClient, Client
+from ...models.error_envelope import ErrorEnvelope
 from ...models.executions_response import ExecutionsResponse
 from ...types import UNSET, Response, Unset
 
@@ -18,8 +19,8 @@ def _get_kwargs(
     exchange: None | str | Unset = UNSET,
     side: None | str | Unset = UNSET,
     time_after: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> dict[str, Any]:
-
     params: dict[str, Any] = {}
 
     json_account: None | str | Unset
@@ -71,6 +72,8 @@ def _get_kwargs(
         json_time_after = time_after
     params["timeAfter"] = json_time_after
 
+    params["refresh"] = refresh
+
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
     _kwargs: dict[str, Any] = {
@@ -82,11 +85,18 @@ def _get_kwargs(
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> ExecutionsResponse | None:
+def _parse_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> ErrorEnvelope | ExecutionsResponse | None:
     if response.status_code == 200:
         response_200 = ExecutionsResponse.from_dict(response.json())
 
         return response_200
+
+    if response.status_code == 429:
+        response_429 = ErrorEnvelope.from_dict(response.json())
+
+        return response_429
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -94,7 +104,9 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[ExecutionsResponse]:
+def _build_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[ErrorEnvelope | ExecutionsResponse]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -113,7 +125,8 @@ def sync_detailed(
     exchange: None | str | Unset = UNSET,
     side: None | str | Unset = UNSET,
     time_after: None | str | Unset = UNSET,
-) -> Response[ExecutionsResponse]:
+    refresh: bool | Unset = False,
+) -> Response[ErrorEnvelope | ExecutionsResponse]:
     """Today's executions (broker-side fills feed).
 
     Args:
@@ -124,13 +137,14 @@ def sync_detailed(
         exchange (None | str | Unset):
         side (None | str | Unset):
         time_after (None | str | Unset): 'YYYYMMDD HH:MM:SS' UTC
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ExecutionsResponse]
+        Response[ErrorEnvelope | ExecutionsResponse]
     """
 
     kwargs = _get_kwargs(
@@ -141,6 +155,7 @@ def sync_detailed(
         exchange=exchange,
         side=side,
         time_after=time_after,
+        refresh=refresh,
     )
 
     response = client.get_httpx_client().request(
@@ -160,7 +175,8 @@ def sync(
     exchange: None | str | Unset = UNSET,
     side: None | str | Unset = UNSET,
     time_after: None | str | Unset = UNSET,
-) -> ExecutionsResponse | None:
+    refresh: bool | Unset = False,
+) -> ErrorEnvelope | ExecutionsResponse | None:
     """Today's executions (broker-side fills feed).
 
     Args:
@@ -171,13 +187,14 @@ def sync(
         exchange (None | str | Unset):
         side (None | str | Unset):
         time_after (None | str | Unset): 'YYYYMMDD HH:MM:SS' UTC
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ExecutionsResponse
+        ErrorEnvelope | ExecutionsResponse
     """
 
     return sync_detailed(
@@ -189,6 +206,7 @@ def sync(
         exchange=exchange,
         side=side,
         time_after=time_after,
+        refresh=refresh,
     ).parsed
 
 
@@ -202,7 +220,8 @@ async def asyncio_detailed(
     exchange: None | str | Unset = UNSET,
     side: None | str | Unset = UNSET,
     time_after: None | str | Unset = UNSET,
-) -> Response[ExecutionsResponse]:
+    refresh: bool | Unset = False,
+) -> Response[ErrorEnvelope | ExecutionsResponse]:
     """Today's executions (broker-side fills feed).
 
     Args:
@@ -213,13 +232,14 @@ async def asyncio_detailed(
         exchange (None | str | Unset):
         side (None | str | Unset):
         time_after (None | str | Unset): 'YYYYMMDD HH:MM:SS' UTC
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ExecutionsResponse]
+        Response[ErrorEnvelope | ExecutionsResponse]
     """
 
     kwargs = _get_kwargs(
@@ -230,6 +250,7 @@ async def asyncio_detailed(
         exchange=exchange,
         side=side,
         time_after=time_after,
+        refresh=refresh,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -247,7 +268,8 @@ async def asyncio(
     exchange: None | str | Unset = UNSET,
     side: None | str | Unset = UNSET,
     time_after: None | str | Unset = UNSET,
-) -> ExecutionsResponse | None:
+    refresh: bool | Unset = False,
+) -> ErrorEnvelope | ExecutionsResponse | None:
     """Today's executions (broker-side fills feed).
 
     Args:
@@ -258,13 +280,14 @@ async def asyncio(
         exchange (None | str | Unset):
         side (None | str | Unset):
         time_after (None | str | Unset): 'YYYYMMDD HH:MM:SS' UTC
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ExecutionsResponse
+        ErrorEnvelope | ExecutionsResponse
     """
 
     return (
@@ -277,5 +300,6 @@ async def asyncio(
             exchange=exchange,
             side=side,
             time_after=time_after,
+            refresh=refresh,
         )
     ).parsed

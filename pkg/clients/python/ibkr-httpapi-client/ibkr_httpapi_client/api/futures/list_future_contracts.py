@@ -7,6 +7,7 @@ import httpx
 from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.contract_details_list import ContractDetailsList
+from ...models.error_envelope import ErrorEnvelope
 from ...types import UNSET, Response, Unset
 
 
@@ -16,8 +17,8 @@ def _get_kwargs(
     exchange: str,
     currency: None | str | Unset = UNSET,
     include_expired: bool | Unset = False,
+    refresh: bool | Unset = False,
 ) -> dict[str, Any]:
-
     params: dict[str, Any] = {}
 
     params["exchange"] = exchange
@@ -30,6 +31,8 @@ def _get_kwargs(
     params["currency"] = json_currency
 
     params["includeExpired"] = include_expired
+
+    params["refresh"] = refresh
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -44,11 +47,18 @@ def _get_kwargs(
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> ContractDetailsList | None:
+def _parse_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> ContractDetailsList | ErrorEnvelope | None:
     if response.status_code == 200:
         response_200 = ContractDetailsList.from_dict(response.json())
 
         return response_200
+
+    if response.status_code == 429:
+        response_429 = ErrorEnvelope.from_dict(response.json())
+
+        return response_429
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -56,7 +66,9 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[ContractDetailsList]:
+def _build_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[ContractDetailsList | ErrorEnvelope]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -72,7 +84,8 @@ def sync_detailed(
     exchange: str,
     currency: None | str | Unset = UNSET,
     include_expired: bool | Unset = False,
-) -> Response[ContractDetailsList]:
+    refresh: bool | Unset = False,
+) -> Response[ContractDetailsList | ErrorEnvelope]:
     """All future contracts (every expiry) for the symbol.
 
     Args:
@@ -80,13 +93,14 @@ def sync_detailed(
         exchange (str):
         currency (None | str | Unset):
         include_expired (bool | Unset):  Default: False.
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ContractDetailsList]
+        Response[ContractDetailsList | ErrorEnvelope]
     """
 
     kwargs = _get_kwargs(
@@ -94,6 +108,7 @@ def sync_detailed(
         exchange=exchange,
         currency=currency,
         include_expired=include_expired,
+        refresh=refresh,
     )
 
     response = client.get_httpx_client().request(
@@ -110,7 +125,8 @@ def sync(
     exchange: str,
     currency: None | str | Unset = UNSET,
     include_expired: bool | Unset = False,
-) -> ContractDetailsList | None:
+    refresh: bool | Unset = False,
+) -> ContractDetailsList | ErrorEnvelope | None:
     """All future contracts (every expiry) for the symbol.
 
     Args:
@@ -118,13 +134,14 @@ def sync(
         exchange (str):
         currency (None | str | Unset):
         include_expired (bool | Unset):  Default: False.
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ContractDetailsList
+        ContractDetailsList | ErrorEnvelope
     """
 
     return sync_detailed(
@@ -133,6 +150,7 @@ def sync(
         exchange=exchange,
         currency=currency,
         include_expired=include_expired,
+        refresh=refresh,
     ).parsed
 
 
@@ -143,7 +161,8 @@ async def asyncio_detailed(
     exchange: str,
     currency: None | str | Unset = UNSET,
     include_expired: bool | Unset = False,
-) -> Response[ContractDetailsList]:
+    refresh: bool | Unset = False,
+) -> Response[ContractDetailsList | ErrorEnvelope]:
     """All future contracts (every expiry) for the symbol.
 
     Args:
@@ -151,13 +170,14 @@ async def asyncio_detailed(
         exchange (str):
         currency (None | str | Unset):
         include_expired (bool | Unset):  Default: False.
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[ContractDetailsList]
+        Response[ContractDetailsList | ErrorEnvelope]
     """
 
     kwargs = _get_kwargs(
@@ -165,6 +185,7 @@ async def asyncio_detailed(
         exchange=exchange,
         currency=currency,
         include_expired=include_expired,
+        refresh=refresh,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -179,7 +200,8 @@ async def asyncio(
     exchange: str,
     currency: None | str | Unset = UNSET,
     include_expired: bool | Unset = False,
-) -> ContractDetailsList | None:
+    refresh: bool | Unset = False,
+) -> ContractDetailsList | ErrorEnvelope | None:
     """All future contracts (every expiry) for the symbol.
 
     Args:
@@ -187,13 +209,14 @@ async def asyncio(
         exchange (str):
         currency (None | str | Unset):
         include_expired (bool | Unset):  Default: False.
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        ContractDetailsList
+        ContractDetailsList | ErrorEnvelope
     """
 
     return (
@@ -203,5 +226,6 @@ async def asyncio(
             exchange=exchange,
             currency=currency,
             include_expired=include_expired,
+            refresh=refresh,
         )
     ).parsed

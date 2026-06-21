@@ -105,7 +105,7 @@ async def _lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ibkr-httpapi",
-    version="0.2.0",
+    version="0.3.0",
     description="HTTP wrapper over IBKR via ib_async. Asset-class routed.",
     lifespan=_lifespan,
 )

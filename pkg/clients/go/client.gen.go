@@ -414,6 +414,9 @@ type PairPath = string
 // PrimaryExchangeQuery defines model for PrimaryExchangeQuery.
 type PrimaryExchangeQuery = string
 
+// RefreshQuery defines model for RefreshQuery.
+type RefreshQuery = bool
+
 // StartDateTimeQuery defines model for StartDateTimeQuery.
 type StartDateTimeQuery = string
 
@@ -435,6 +438,9 @@ type BadRequest = ErrorEnvelope
 // NotFound defines model for NotFound.
 type NotFound = ErrorEnvelope
 
+// RateLimitNear defines model for RateLimitNear.
+type RateLimitNear = ErrorEnvelope
+
 // UpstreamUnavailable defines model for UpstreamUnavailable.
 type UpstreamUnavailable = ErrorEnvelope
 
@@ -452,6 +458,9 @@ type GetAccountValuesParams struct {
 type GetCFDContractParams struct {
 	Exchange *ExchangeQuery `form:"exchange,omitempty" json:"exchange,omitempty"`
 	Currency *CurrencyQuery `form:"currency,omitempty" json:"currency,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetCFDRatesParams defines parameters for GetCFDRates.
@@ -463,12 +472,18 @@ type GetCFDRatesParams struct {
 	UseRTH      *UseRTHQuery      `form:"useRTH,omitempty" json:"useRTH,omitempty"`
 	Exchange    *ExchangeQuery    `form:"exchange,omitempty" json:"exchange,omitempty"`
 	Currency    *CurrencyQuery    `form:"currency,omitempty" json:"currency,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetCFDRatesTAParams defines parameters for GetCFDRatesTA.
 type GetCFDRatesTAParams struct {
 	Exchange *ExchangeQuery `form:"exchange,omitempty" json:"exchange,omitempty"`
 	Currency *CurrencyQuery `form:"currency,omitempty" json:"currency,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetCFDTickParams defines parameters for GetCFDTick.
@@ -481,6 +496,9 @@ type GetCFDTickParams struct {
 type GetCryptoContractParams struct {
 	Exchange *ExchangeQuery `form:"exchange,omitempty" json:"exchange,omitempty"`
 	Currency *CurrencyQuery `form:"currency,omitempty" json:"currency,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetCryptoRatesParams defines parameters for GetCryptoRates.
@@ -492,12 +510,18 @@ type GetCryptoRatesParams struct {
 	UseRTH      *UseRTHQuery      `form:"useRTH,omitempty" json:"useRTH,omitempty"`
 	Exchange    *ExchangeQuery    `form:"exchange,omitempty" json:"exchange,omitempty"`
 	Currency    *CurrencyQuery    `form:"currency,omitempty" json:"currency,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetCryptoRatesTAParams defines parameters for GetCryptoRatesTA.
 type GetCryptoRatesTAParams struct {
 	Exchange *ExchangeQuery `form:"exchange,omitempty" json:"exchange,omitempty"`
 	Currency *CurrencyQuery `form:"currency,omitempty" json:"currency,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetCryptoTickParams defines parameters for GetCryptoTick.
@@ -509,6 +533,9 @@ type GetCryptoTickParams struct {
 // GetForexContractParams defines parameters for GetForexContract.
 type GetForexContractParams struct {
 	Exchange *ExchangeQuery `form:"exchange,omitempty" json:"exchange,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetForexRatesParams defines parameters for GetForexRates.
@@ -519,11 +546,17 @@ type GetForexRatesParams struct {
 	WhatToShow  *WhatToShowQuery  `form:"whatToShow,omitempty" json:"whatToShow,omitempty"`
 	UseRTH      *UseRTHQuery      `form:"useRTH,omitempty" json:"useRTH,omitempty"`
 	Exchange    *ExchangeQuery    `form:"exchange,omitempty" json:"exchange,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetForexRatesTAParams defines parameters for GetForexRatesTA.
 type GetForexRatesTAParams struct {
 	Exchange *ExchangeQuery `form:"exchange,omitempty" json:"exchange,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetForexTickParams defines parameters for GetForexTick.
@@ -538,12 +571,18 @@ type GetFutureContractParams struct {
 	Currency     *CurrencyQuery         `form:"currency,omitempty" json:"currency,omitempty"`
 	Multiplier   *OptionMultiplierQuery `form:"multiplier,omitempty" json:"multiplier,omitempty"`
 	TradingClass *TradingClassQuery     `form:"tradingClass,omitempty" json:"tradingClass,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetContinuousFutureParams defines parameters for GetContinuousFuture.
 type GetContinuousFutureParams struct {
 	Exchange ExchangeRequiredQuery `form:"exchange" json:"exchange"`
 	Currency *CurrencyQuery        `form:"currency,omitempty" json:"currency,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // ListFutureContractsParams defines parameters for ListFutureContracts.
@@ -551,6 +590,9 @@ type ListFutureContractsParams struct {
 	Exchange       ExchangeRequiredQuery `form:"exchange" json:"exchange"`
 	Currency       *CurrencyQuery        `form:"currency,omitempty" json:"currency,omitempty"`
 	IncludeExpired *bool                 `form:"includeExpired,omitempty" json:"includeExpired,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetFutureRatesParams defines parameters for GetFutureRates.
@@ -565,6 +607,9 @@ type GetFutureRatesParams struct {
 	Currency     *CurrencyQuery         `form:"currency,omitempty" json:"currency,omitempty"`
 	Multiplier   *OptionMultiplierQuery `form:"multiplier,omitempty" json:"multiplier,omitempty"`
 	TradingClass *TradingClassQuery     `form:"tradingClass,omitempty" json:"tradingClass,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetFutureRatesTAParams defines parameters for GetFutureRatesTA.
@@ -574,6 +619,9 @@ type GetFutureRatesTAParams struct {
 	Currency     *CurrencyQuery         `form:"currency,omitempty" json:"currency,omitempty"`
 	Multiplier   *OptionMultiplierQuery `form:"multiplier,omitempty" json:"multiplier,omitempty"`
 	TradingClass *TradingClassQuery     `form:"tradingClass,omitempty" json:"tradingClass,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetFutureTickParams defines parameters for GetFutureTick.
@@ -588,6 +636,9 @@ type GetFutureTickParams struct {
 // GetCompletedOrdersParams defines parameters for GetCompletedOrders.
 type GetCompletedOrdersParams struct {
 	ApiOnly *bool `form:"apiOnly,omitempty" json:"apiOnly,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetExecutionsParams defines parameters for GetExecutions.
@@ -599,6 +650,9 @@ type GetExecutionsParams struct {
 	Exchange  *ExchangeQuery `form:"exchange,omitempty" json:"exchange,omitempty"`
 	Side      *string        `form:"side,omitempty" json:"side,omitempty"`
 	TimeAfter *string        `form:"timeAfter,omitempty" json:"timeAfter,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetOptionContractParams defines parameters for GetOptionContract.
@@ -610,6 +664,9 @@ type GetOptionContractParams struct {
 	Currency     *CurrencyQuery         `form:"currency,omitempty" json:"currency,omitempty"`
 	Multiplier   *OptionMultiplierQuery `form:"multiplier,omitempty" json:"multiplier,omitempty"`
 	TradingClass *TradingClassQuery     `form:"tradingClass,omitempty" json:"tradingClass,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetOptionChainParams defines parameters for GetOptionChain.
@@ -617,6 +674,9 @@ type GetOptionChainParams struct {
 	UnderlyingSecType *string `form:"underlyingSecType,omitempty" json:"underlyingSecType,omitempty"`
 	FutFopExchange    *string `form:"futFopExchange,omitempty" json:"futFopExchange,omitempty"`
 	UnderlyingConId   *int    `form:"underlyingConId,omitempty" json:"underlyingConId,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetOptionRatesParams defines parameters for GetOptionRates.
@@ -633,6 +693,9 @@ type GetOptionRatesParams struct {
 	Currency     *CurrencyQuery         `form:"currency,omitempty" json:"currency,omitempty"`
 	Multiplier   *OptionMultiplierQuery `form:"multiplier,omitempty" json:"multiplier,omitempty"`
 	TradingClass *TradingClassQuery     `form:"tradingClass,omitempty" json:"tradingClass,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetOptionRatesTAParams defines parameters for GetOptionRatesTA.
@@ -644,6 +707,9 @@ type GetOptionRatesTAParams struct {
 	Currency     *CurrencyQuery         `form:"currency,omitempty" json:"currency,omitempty"`
 	Multiplier   *OptionMultiplierQuery `form:"multiplier,omitempty" json:"multiplier,omitempty"`
 	TradingClass *TradingClassQuery     `form:"tradingClass,omitempty" json:"tradingClass,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetOptionTickParams defines parameters for GetOptionTick.
@@ -667,6 +733,9 @@ type GetStockContractParams struct {
 	Exchange        *ExchangeQuery        `form:"exchange,omitempty" json:"exchange,omitempty"`
 	Currency        *CurrencyQuery        `form:"currency,omitempty" json:"currency,omitempty"`
 	PrimaryExchange *PrimaryExchangeQuery `form:"primaryExchange,omitempty" json:"primaryExchange,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetStockRatesParams defines parameters for GetStockRates.
@@ -679,6 +748,9 @@ type GetStockRatesParams struct {
 	Exchange        *ExchangeQuery        `form:"exchange,omitempty" json:"exchange,omitempty"`
 	Currency        *CurrencyQuery        `form:"currency,omitempty" json:"currency,omitempty"`
 	PrimaryExchange *PrimaryExchangeQuery `form:"primaryExchange,omitempty" json:"primaryExchange,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetStockRatesTAParams defines parameters for GetStockRatesTA.
@@ -686,6 +758,9 @@ type GetStockRatesTAParams struct {
 	Exchange        *ExchangeQuery        `form:"exchange,omitempty" json:"exchange,omitempty"`
 	Currency        *CurrencyQuery        `form:"currency,omitempty" json:"currency,omitempty"`
 	PrimaryExchange *PrimaryExchangeQuery `form:"primaryExchange,omitempty" json:"primaryExchange,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetStockTickParams defines parameters for GetStockTick.
@@ -705,6 +780,9 @@ type GetStockTicksParams struct {
 	Exchange        *ExchangeQuery        `form:"exchange,omitempty" json:"exchange,omitempty"`
 	Currency        *CurrencyQuery        `form:"currency,omitempty" json:"currency,omitempty"`
 	PrimaryExchange *PrimaryExchangeQuery `form:"primaryExchange,omitempty" json:"primaryExchange,omitempty"`
+
+	// Refresh Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+	Refresh *RefreshQuery `form:"refresh,omitempty" json:"refresh,omitempty"`
 }
 
 // GetCFDRatesTAJSONRequestBody defines body for GetCFDRatesTA for application/json ContentType.
@@ -1758,6 +1836,18 @@ func NewGetCFDContractRequest(server string, symbol SymbolPath, params *GetCFDCo
 
 		}
 
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -1887,6 +1977,18 @@ func NewGetCFDRatesRequest(server string, symbol SymbolPath, params *GetCFDRates
 
 		}
 
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -1962,6 +2064,18 @@ func NewGetCFDRatesTARequestWithBody(server string, symbol SymbolPath, params *G
 		if params.Currency != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "currency", *params.Currency, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -2119,6 +2233,18 @@ func NewGetCryptoContractRequest(server string, symbol SymbolPath, params *GetCr
 
 		}
 
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -2248,6 +2374,18 @@ func NewGetCryptoRatesRequest(server string, symbol SymbolPath, params *GetCrypt
 
 		}
 
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -2323,6 +2461,18 @@ func NewGetCryptoRatesTARequestWithBody(server string, symbol SymbolPath, params
 		if params.Currency != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "currency", *params.Currency, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -2468,6 +2618,18 @@ func NewGetForexContractRequest(server string, pair PairPath, params *GetForexCo
 
 		}
 
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -2585,6 +2747,18 @@ func NewGetForexRatesRequest(server string, pair PairPath, params *GetForexRates
 
 		}
 
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -2648,6 +2822,18 @@ func NewGetForexRatesTARequestWithBody(server string, pair PairPath, params *Get
 		if params.Exchange != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "exchange", *params.Exchange, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -2821,6 +3007,18 @@ func NewGetFutureContractRequest(server string, symbol SymbolPath, params *GetFu
 
 		}
 
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -2881,6 +3079,18 @@ func NewGetContinuousFutureRequest(server string, symbol SymbolPath, params *Get
 		if params.Currency != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "currency", *params.Currency, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -2962,6 +3172,18 @@ func NewListFutureContractsRequest(server string, symbol SymbolPath, params *Lis
 		if params.IncludeExpired != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeExpired", *params.IncludeExpired, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -3128,6 +3350,18 @@ func NewGetFutureRatesRequest(server string, symbol SymbolPath, params *GetFutur
 
 		}
 
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -3231,6 +3465,18 @@ func NewGetFutureRatesTARequestWithBody(server string, symbol SymbolPath, params
 		if params.TradingClass != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tradingClass", *params.TradingClass, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -3397,6 +3643,18 @@ func NewGetCompletedOrdersRequest(server string, params *GetCompletedOrdersParam
 
 		}
 
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -3514,6 +3772,18 @@ func NewGetExecutionsRequest(server string, params *GetExecutionsParams) (*http.
 		if params.TimeAfter != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "timeAfter", *params.TimeAfter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -3724,6 +3994,18 @@ func NewGetOptionContractRequest(server string, symbol SymbolPath, params *GetOp
 
 		}
 
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -3800,6 +4082,18 @@ func NewGetOptionChainRequest(server string, symbol SymbolPath, params *GetOptio
 		if params.UnderlyingConId != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "underlyingConId", *params.UnderlyingConId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -3986,6 +4280,18 @@ func NewGetOptionRatesRequest(server string, symbol SymbolPath, params *GetOptio
 
 		}
 
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -4109,6 +4415,18 @@ func NewGetOptionRatesTARequestWithBody(server string, symbol SymbolPath, params
 		if params.TradingClass != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tradingClass", *params.TradingClass, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -4569,6 +4887,18 @@ func NewGetStockContractRequest(server string, symbol SymbolPath, params *GetSto
 
 		}
 
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -4710,6 +5040,18 @@ func NewGetStockRatesRequest(server string, symbol SymbolPath, params *GetStockR
 
 		}
 
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
@@ -4797,6 +5139,18 @@ func NewGetStockRatesTARequestWithBody(server string, symbol SymbolPath, params 
 		if params.PrimaryExchange != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "primaryExchange", *params.PrimaryExchange, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -5029,6 +5383,18 @@ func NewGetStockTicksRequest(server string, symbol SymbolPath, params *GetStockT
 		if params.PrimaryExchange != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "primaryExchange", *params.PrimaryExchange, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Refresh != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "refresh", *params.Refresh, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -5335,6 +5701,7 @@ type GetCFDContractHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ContractDetailsList
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5365,6 +5732,7 @@ type GetCFDRatesHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *BarsResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5395,6 +5763,7 @@ type GetCFDRatesTAHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *RatesTAResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5425,6 +5794,7 @@ type GetCFDTickHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *Ticker
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5455,6 +5825,7 @@ type GetCryptoContractHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ContractDetailsList
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5485,6 +5856,7 @@ type GetCryptoRatesHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *BarsResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5515,6 +5887,7 @@ type GetCryptoRatesTAHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *RatesTAResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5545,6 +5918,7 @@ type GetCryptoTickHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *Ticker
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5575,6 +5949,7 @@ type GetForexContractHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ContractDetailsList
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5605,6 +5980,7 @@ type GetForexRatesHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *BarsResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5635,6 +6011,7 @@ type GetForexRatesTAHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *RatesTAResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5665,6 +6042,7 @@ type GetForexTickHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *Ticker
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5695,6 +6073,7 @@ type GetFutureContractHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ContractDetailsList
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5725,6 +6104,7 @@ type GetContinuousFutureHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ContractDetailsList
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5755,6 +6135,7 @@ type ListFutureContractsHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ContractDetailsList
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5785,6 +6166,7 @@ type GetFutureRatesHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *BarsResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5815,6 +6197,7 @@ type GetFutureRatesTAHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *RatesTAResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5845,6 +6228,7 @@ type GetFutureTickHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *Ticker
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5875,6 +6259,7 @@ type GetCompletedOrdersHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *CompletedOrdersResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5905,6 +6290,7 @@ type GetExecutionsHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ExecutionsResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5936,6 +6322,7 @@ type PlaceOptionComboHTTPResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *Trade
 	JSON400      *BadRequest
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5967,6 +6354,7 @@ type ExerciseOptionHTTPResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *ExerciseResponse
 	JSON404      *NotFound
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -5997,6 +6385,7 @@ type GetOptionContractHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ContractDetailsList
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -6028,6 +6417,7 @@ type GetOptionChainHTTPResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *OptionChain
 	JSON404      *NotFound
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -6058,6 +6448,7 @@ type GetOptionRatesHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *BarsResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -6088,6 +6479,7 @@ type GetOptionRatesTAHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *RatesTAResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -6118,6 +6510,7 @@ type GetOptionTickHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *Ticker
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -6148,6 +6541,7 @@ type CancelAllOrdersHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *CancelAllResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -6210,6 +6604,7 @@ type PlaceOrderHTTPResponse struct {
 	JSON200      *Trade
 	JSON400      *BadRequest
 	JSON404      *NotFound
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -6241,6 +6636,7 @@ type CancelOrderHTTPResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *CancelOrderResponse
 	JSON404      *NotFound
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -6272,6 +6668,7 @@ type GetOrderHTTPResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *Trade
 	JSON404      *NotFound
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -6363,6 +6760,7 @@ type GetStockContractHTTPResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *ContractDetailsList
 	JSON404      *NotFound
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -6393,6 +6791,7 @@ type GetStockRatesHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *BarsResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -6423,6 +6822,7 @@ type GetStockRatesTAHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *RatesTAResponse
+	JSON429      *RateLimitNear
 	JSON503      *UpstreamUnavailable
 }
 
@@ -6454,6 +6854,7 @@ type GetStockTickHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *Ticker
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -6484,6 +6885,7 @@ type GetStockTicksHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *TicksResponse
+	JSON429      *RateLimitNear
 }
 
 // Status returns HTTPResponse.Status
@@ -7066,6 +7468,13 @@ func ParseGetCFDContractHTTPResponse(rsp *http.Response) (*GetCFDContractHTTPRes
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7091,6 +7500,13 @@ func ParseGetCFDRatesHTTPResponse(rsp *http.Response) (*GetCFDRatesHTTPResponse,
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -7118,6 +7534,13 @@ func ParseGetCFDRatesTAHTTPResponse(rsp *http.Response) (*GetCFDRatesTAHTTPRespo
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7143,6 +7566,13 @@ func ParseGetCFDTickHTTPResponse(rsp *http.Response) (*GetCFDTickHTTPResponse, e
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -7170,6 +7600,13 @@ func ParseGetCryptoContractHTTPResponse(rsp *http.Response) (*GetCryptoContractH
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7195,6 +7632,13 @@ func ParseGetCryptoRatesHTTPResponse(rsp *http.Response) (*GetCryptoRatesHTTPRes
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -7222,6 +7666,13 @@ func ParseGetCryptoRatesTAHTTPResponse(rsp *http.Response) (*GetCryptoRatesTAHTT
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7247,6 +7698,13 @@ func ParseGetCryptoTickHTTPResponse(rsp *http.Response) (*GetCryptoTickHTTPRespo
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -7274,6 +7732,13 @@ func ParseGetForexContractHTTPResponse(rsp *http.Response) (*GetForexContractHTT
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7299,6 +7764,13 @@ func ParseGetForexRatesHTTPResponse(rsp *http.Response) (*GetForexRatesHTTPRespo
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -7326,6 +7798,13 @@ func ParseGetForexRatesTAHTTPResponse(rsp *http.Response) (*GetForexRatesTAHTTPR
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7351,6 +7830,13 @@ func ParseGetForexTickHTTPResponse(rsp *http.Response) (*GetForexTickHTTPRespons
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -7378,6 +7864,13 @@ func ParseGetFutureContractHTTPResponse(rsp *http.Response) (*GetFutureContractH
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7403,6 +7896,13 @@ func ParseGetContinuousFutureHTTPResponse(rsp *http.Response) (*GetContinuousFut
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -7430,6 +7930,13 @@ func ParseListFutureContractsHTTPResponse(rsp *http.Response) (*ListFutureContra
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7455,6 +7962,13 @@ func ParseGetFutureRatesHTTPResponse(rsp *http.Response) (*GetFutureRatesHTTPRes
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -7482,6 +7996,13 @@ func ParseGetFutureRatesTAHTTPResponse(rsp *http.Response) (*GetFutureRatesTAHTT
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7507,6 +8028,13 @@ func ParseGetFutureTickHTTPResponse(rsp *http.Response) (*GetFutureTickHTTPRespo
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -7534,6 +8062,13 @@ func ParseGetCompletedOrdersHTTPResponse(rsp *http.Response) (*GetCompletedOrder
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7559,6 +8094,13 @@ func ParseGetExecutionsHTTPResponse(rsp *http.Response) (*GetExecutionsHTTPRespo
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -7593,6 +8135,13 @@ func ParsePlaceOptionComboHTTPResponse(rsp *http.Response) (*PlaceOptionComboHTT
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7626,6 +8175,13 @@ func ParseExerciseOptionHTTPResponse(rsp *http.Response) (*ExerciseOptionHTTPRes
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7651,6 +8207,13 @@ func ParseGetOptionContractHTTPResponse(rsp *http.Response) (*GetOptionContractH
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -7685,6 +8248,13 @@ func ParseGetOptionChainHTTPResponse(rsp *http.Response) (*GetOptionChainHTTPRes
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7710,6 +8280,13 @@ func ParseGetOptionRatesHTTPResponse(rsp *http.Response) (*GetOptionRatesHTTPRes
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -7737,6 +8314,13 @@ func ParseGetOptionRatesTAHTTPResponse(rsp *http.Response) (*GetOptionRatesTAHTT
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7763,6 +8347,13 @@ func ParseGetOptionTickHTTPResponse(rsp *http.Response) (*GetOptionTickHTTPRespo
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7788,6 +8379,13 @@ func ParseCancelAllOrdersHTTPResponse(rsp *http.Response) (*CancelAllOrdersHTTPR
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -7855,6 +8453,13 @@ func ParsePlaceOrderHTTPResponse(rsp *http.Response) (*PlaceOrderHTTPResponse, e
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7888,6 +8493,13 @@ func ParseCancelOrderHTTPResponse(rsp *http.Response) (*CancelOrderHTTPResponse,
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -7920,6 +8532,13 @@ func ParseGetOrderHTTPResponse(rsp *http.Response) (*GetOrderHTTPResponse, error
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 
@@ -8006,6 +8625,13 @@ func ParseGetStockContractHTTPResponse(rsp *http.Response) (*GetStockContractHTT
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -8032,6 +8658,13 @@ func ParseGetStockRatesHTTPResponse(rsp *http.Response) (*GetStockRatesHTTPRespo
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -8057,6 +8690,13 @@ func ParseGetStockRatesTAHTTPResponse(rsp *http.Response) (*GetStockRatesTAHTTPR
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
 		var dest UpstreamUnavailable
@@ -8091,6 +8731,13 @@ func ParseGetStockTickHTTPResponse(rsp *http.Response) (*GetStockTickHTTPRespons
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	}
 
 	return response, nil
@@ -8116,6 +8763,13 @@ func ParseGetStockTicksHTTPResponse(rsp *http.Response) (*GetStockTicksHTTPRespo
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitNear
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	}
 

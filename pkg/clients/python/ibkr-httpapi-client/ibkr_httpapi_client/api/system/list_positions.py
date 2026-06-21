@@ -13,7 +13,6 @@ def _get_kwargs(
     *,
     account: None | str | Unset = UNSET,
 ) -> dict[str, Any]:
-
     params: dict[str, Any] = {}
 
     json_account: None | str | Unset

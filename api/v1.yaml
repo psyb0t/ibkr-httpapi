@@ -13,949 +13,1138 @@ info:
   version: 1.0.0
   license:
     name: WTFPL
-
 servers:
-  - url: /v1
-    description: This deployment's v1 API. Prefix is fixed.
-
+- url: /v1
+  description: This deployment's v1 API. Prefix is fixed.
 tags:
-  - name: system
-    description: Health + account-level data
-  - name: stocks
-    description: STK contracts + ticks + bars
-  - name: options
-    description: OPT contracts + chains + Greeks + exercise + combo orders
-  - name: futures
-    description: FUT contracts + bars
-  - name: cfd
-    description: CFD contracts + bars
-  - name: forex
-    description: CASH currency-pair contracts + bars
-  - name: crypto
-    description: CRYPTO contracts + bars
-  - name: orders
-    description: Cross-asset order entry / list / cancel
-  - name: history
-    description: Execution + fill history
-
+- name: system
+  description: Health + account-level data
+- name: stocks
+  description: STK contracts + ticks + bars
+- name: options
+  description: OPT contracts + chains + Greeks + exercise + combo orders
+- name: futures
+  description: FUT contracts + bars
+- name: cfd
+  description: CFD contracts + bars
+- name: forex
+  description: CASH currency-pair contracts + bars
+- name: crypto
+  description: CRYPTO contracts + bars
+- name: orders
+  description: Cross-asset order entry / list / cancel
+- name: history
+  description: Execution + fill history
 paths:
   /ping:
     get:
       operationId: getPing
-      tags: [system]
+      tags:
+      - system
       summary: Liveness + IBKR Gateway connection state.
       responses:
         '200':
           description: API up; `connected` says whether the upstream gateway socket is alive.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/PingResponse' }
-
+              schema:
+                $ref: '#/components/schemas/PingResponse'
   /accounts:
     get:
       operationId: listAccounts
-      tags: [system]
+      tags:
+      - system
       summary: List every IBKR account the logged-in user can trade.
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/AccountsList' }
-
+              schema:
+                $ref: '#/components/schemas/AccountsList'
   /account:
     get:
       operationId: getAccountSummary
-      tags: [system]
+      tags:
+      - system
       summary: Account summary fields (balance, equity, margin, ...).
       parameters:
-        - $ref: '#/components/parameters/AccountFilter'
+      - $ref: '#/components/parameters/AccountFilter'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/AccountSummary' }
+              schema:
+                $ref: '#/components/schemas/AccountSummary'
         '404':
           $ref: '#/components/responses/NotFound'
-
   /account/values:
     get:
       operationId: getAccountValues
-      tags: [system]
+      tags:
+      - system
       summary: Raw account-values stream (more fields than the summary).
       parameters:
-        - $ref: '#/components/parameters/AccountFilter'
+      - $ref: '#/components/parameters/AccountFilter'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/AccountSummary' }
-
+              schema:
+                $ref: '#/components/schemas/AccountSummary'
   /positions:
     get:
       operationId: listPositions
-      tags: [system]
+      tags:
+      - system
       summary: All open positions across the logged-in user's accounts.
       parameters:
-        - $ref: '#/components/parameters/AccountFilter'
+      - $ref: '#/components/parameters/AccountFilter'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/PositionsList' }
-
-  # ─── stocks ──────────────────────────────────────────────────────
+              schema:
+                $ref: '#/components/schemas/PositionsList'
   /stocks/{symbol}:
     get:
       operationId: getStockContract
-      tags: [stocks]
+      tags:
+      - stocks
       summary: Stock contract details.
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - $ref: '#/components/parameters/PrimaryExchangeQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/PrimaryExchangeQuery'
+      - &id002
+        $ref: '#/components/parameters/RefreshQuery'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ContractDetailsList' }
+              schema:
+                $ref: '#/components/schemas/ContractDetailsList'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '429': &id001
+          $ref: '#/components/responses/RateLimitNear'
   /stocks/{symbol}/tick:
     get:
       operationId: getStockTick
-      tags: [stocks]
+      tags:
+      - stocks
       summary: Snapshot tick (bid/ask/last + volume/OHLC for the session).
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - $ref: '#/components/parameters/PrimaryExchangeQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/PrimaryExchangeQuery'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Ticker' }
-
+              schema:
+                $ref: '#/components/schemas/Ticker'
+        '429': *id001
   /stocks/{symbol}/rates:
     get:
       operationId: getStockRates
-      tags: [stocks]
+      tags:
+      - stocks
       summary: Historical OHLC bars.
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/DurationQuery'
-        - $ref: '#/components/parameters/BarSizeQuery'
-        - $ref: '#/components/parameters/EndDateTimeQuery'
-        - $ref: '#/components/parameters/WhatToShowQuery'
-        - $ref: '#/components/parameters/UseRTHQuery'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - $ref: '#/components/parameters/PrimaryExchangeQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/DurationQuery'
+      - $ref: '#/components/parameters/BarSizeQuery'
+      - $ref: '#/components/parameters/EndDateTimeQuery'
+      - $ref: '#/components/parameters/WhatToShowQuery'
+      - $ref: '#/components/parameters/UseRTHQuery'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/PrimaryExchangeQuery'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BarsResponse' }
-
+              schema:
+                $ref: '#/components/schemas/BarsResponse'
+        '429': *id001
   /stocks/{symbol}/ticks:
     get:
       operationId: getStockTicks
-      tags: [stocks]
+      tags:
+      - stocks
       summary: Historical raw ticks.
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/StartDateTimeQuery'
-        - $ref: '#/components/parameters/EndDateTimeQuery'
-        - $ref: '#/components/parameters/NumberOfTicksQuery'
-        - $ref: '#/components/parameters/WhatToShowQuery'
-        - $ref: '#/components/parameters/UseRTHQuery'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - $ref: '#/components/parameters/PrimaryExchangeQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/StartDateTimeQuery'
+      - $ref: '#/components/parameters/EndDateTimeQuery'
+      - $ref: '#/components/parameters/NumberOfTicksQuery'
+      - $ref: '#/components/parameters/WhatToShowQuery'
+      - $ref: '#/components/parameters/UseRTHQuery'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/PrimaryExchangeQuery'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/TicksResponse' }
-
+              schema:
+                $ref: '#/components/schemas/TicksResponse'
+        '429': *id001
   /stocks/{symbol}/rates/ta:
     post:
       operationId: getStockRatesTA
-      tags: [stocks]
+      tags:
+      - stocks
       summary: Bars + wickworks TA enrichment.
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - $ref: '#/components/parameters/PrimaryExchangeQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/PrimaryExchangeQuery'
+      - *id002
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RatesTARequest' }
+            schema:
+              $ref: '#/components/schemas/RatesTARequest'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RatesTAResponse' }
+              schema:
+                $ref: '#/components/schemas/RatesTAResponse'
         '503':
           $ref: '#/components/responses/UpstreamUnavailable'
-
-  # ─── options ─────────────────────────────────────────────────────
+        '429': *id001
   /options/{symbol}/chain:
     get:
       operationId: getOptionChain
-      tags: [options]
+      tags:
+      - options
       summary: Full option chain (every expiry × strike per exchange).
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - in: query
-          name: underlyingSecType
-          required: false
-          schema: { type: string, default: STK }
-        - in: query
-          name: futFopExchange
-          required: false
-          schema: { type: string, default: "" }
-        - in: query
-          name: underlyingConId
-          required: false
-          schema: { type: integer, nullable: true }
+      - $ref: '#/components/parameters/SymbolPath'
+      - in: query
+        name: underlyingSecType
+        required: false
+        schema:
+          type: string
+          default: STK
+      - in: query
+        name: futFopExchange
+        required: false
+        schema:
+          type: string
+          default: ''
+      - in: query
+        name: underlyingConId
+        required: false
+        schema:
+          type: integer
+          nullable: true
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/OptionChain' }
+              schema:
+                $ref: '#/components/schemas/OptionChain'
         '404':
           $ref: '#/components/responses/NotFound'
-
+        '429': *id001
   /options/{symbol}:
     get:
       operationId: getOptionContract
-      tags: [options]
+      tags:
+      - options
       summary: Specific option contract details.
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/OptionExpiryQuery'
-        - $ref: '#/components/parameters/OptionStrikeQuery'
-        - $ref: '#/components/parameters/OptionRightQuery'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - $ref: '#/components/parameters/OptionMultiplierQuery'
-        - $ref: '#/components/parameters/TradingClassQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/OptionExpiryQuery'
+      - $ref: '#/components/parameters/OptionStrikeQuery'
+      - $ref: '#/components/parameters/OptionRightQuery'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/OptionMultiplierQuery'
+      - $ref: '#/components/parameters/TradingClassQuery'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ContractDetailsList' }
-
+              schema:
+                $ref: '#/components/schemas/ContractDetailsList'
+        '429': *id001
   /options/{symbol}/tick:
     get:
       operationId: getOptionTick
-      tags: [options]
+      tags:
+      - options
       summary: Snapshot tick including Greeks (requires OPRA subscription).
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/OptionExpiryQuery'
-        - $ref: '#/components/parameters/OptionStrikeQuery'
-        - $ref: '#/components/parameters/OptionRightQuery'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - $ref: '#/components/parameters/OptionMultiplierQuery'
-        - $ref: '#/components/parameters/TradingClassQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/OptionExpiryQuery'
+      - $ref: '#/components/parameters/OptionStrikeQuery'
+      - $ref: '#/components/parameters/OptionRightQuery'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/OptionMultiplierQuery'
+      - $ref: '#/components/parameters/TradingClassQuery'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Ticker' }
-
+              schema:
+                $ref: '#/components/schemas/Ticker'
+        '429': *id001
   /options/{symbol}/rates:
     get:
       operationId: getOptionRates
-      tags: [options]
+      tags:
+      - options
       summary: Historical OHLC bars on a specific option contract.
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/OptionExpiryQuery'
-        - $ref: '#/components/parameters/OptionStrikeQuery'
-        - $ref: '#/components/parameters/OptionRightQuery'
-        - $ref: '#/components/parameters/DurationQuery'
-        - $ref: '#/components/parameters/BarSizeQuery'
-        - $ref: '#/components/parameters/EndDateTimeQuery'
-        - $ref: '#/components/parameters/WhatToShowQuery'
-        - $ref: '#/components/parameters/UseRTHQuery'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - $ref: '#/components/parameters/OptionMultiplierQuery'
-        - $ref: '#/components/parameters/TradingClassQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/OptionExpiryQuery'
+      - $ref: '#/components/parameters/OptionStrikeQuery'
+      - $ref: '#/components/parameters/OptionRightQuery'
+      - $ref: '#/components/parameters/DurationQuery'
+      - $ref: '#/components/parameters/BarSizeQuery'
+      - $ref: '#/components/parameters/EndDateTimeQuery'
+      - $ref: '#/components/parameters/WhatToShowQuery'
+      - $ref: '#/components/parameters/UseRTHQuery'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/OptionMultiplierQuery'
+      - $ref: '#/components/parameters/TradingClassQuery'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BarsResponse' }
-
+              schema:
+                $ref: '#/components/schemas/BarsResponse'
+        '429': *id001
   /options/{symbol}/rates/ta:
     post:
       operationId: getOptionRatesTA
-      tags: [options]
+      tags:
+      - options
       summary: Option contract bars + wickworks TA.
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/OptionExpiryQuery'
-        - $ref: '#/components/parameters/OptionStrikeQuery'
-        - $ref: '#/components/parameters/OptionRightQuery'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - $ref: '#/components/parameters/OptionMultiplierQuery'
-        - $ref: '#/components/parameters/TradingClassQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/OptionExpiryQuery'
+      - $ref: '#/components/parameters/OptionStrikeQuery'
+      - $ref: '#/components/parameters/OptionRightQuery'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/OptionMultiplierQuery'
+      - $ref: '#/components/parameters/TradingClassQuery'
+      - *id002
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RatesTARequest' }
+            schema:
+              $ref: '#/components/schemas/RatesTARequest'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RatesTAResponse' }
-
+              schema:
+                $ref: '#/components/schemas/RatesTAResponse'
+        '429': *id001
   /options/combo:
     post:
       operationId: placeOptionCombo
-      tags: [options]
+      tags:
+      - options
       summary: Place a multi-leg combo (BAG) order — vertical / condor / butterfly / calendar.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ComboOrderRequest' }
+            schema:
+              $ref: '#/components/schemas/ComboOrderRequest'
       responses:
         '200':
           description: Submitted trade snapshot.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Trade' }
+              schema:
+                $ref: '#/components/schemas/Trade'
         '400':
           $ref: '#/components/responses/BadRequest'
-
+        '429': *id001
   /options/exercise:
     post:
       operationId: exerciseOption
-      tags: [options]
+      tags:
+      - options
       summary: Exercise or lapse an option position by conid.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ExerciseRequest' }
+            schema:
+              $ref: '#/components/schemas/ExerciseRequest'
       responses:
         '200':
           description: Exercise submitted.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ExerciseResponse' }
+              schema:
+                $ref: '#/components/schemas/ExerciseResponse'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # ─── futures ─────────────────────────────────────────────────────
+        '429': *id001
   /futures/{symbol}/continuous:
     get:
       operationId: getContinuousFuture
-      tags: [futures]
+      tags:
+      - futures
       summary: Continuous future contract details.
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/ExchangeRequiredQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/ExchangeRequiredQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ContractDetailsList' }
-
+              schema:
+                $ref: '#/components/schemas/ContractDetailsList'
+        '429': *id001
   /futures/{symbol}/contracts:
     get:
       operationId: listFutureContracts
-      tags: [futures]
+      tags:
+      - futures
       summary: All future contracts (every expiry) for the symbol.
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/ExchangeRequiredQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - in: query
-          name: includeExpired
-          required: false
-          schema: { type: boolean, default: false }
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/ExchangeRequiredQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - in: query
+        name: includeExpired
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ContractDetailsList' }
-
+              schema:
+                $ref: '#/components/schemas/ContractDetailsList'
+        '429': *id001
   /futures/{symbol}:
     get:
       operationId: getFutureContract
-      tags: [futures]
+      tags:
+      - futures
       summary: Specific future contract details (single expiry).
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/FuturesExpiryQuery'
-        - $ref: '#/components/parameters/ExchangeRequiredQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - $ref: '#/components/parameters/OptionMultiplierQuery'
-        - $ref: '#/components/parameters/TradingClassQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/FuturesExpiryQuery'
+      - $ref: '#/components/parameters/ExchangeRequiredQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/OptionMultiplierQuery'
+      - $ref: '#/components/parameters/TradingClassQuery'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ContractDetailsList' }
-
+              schema:
+                $ref: '#/components/schemas/ContractDetailsList'
+        '429': *id001
   /futures/{symbol}/tick:
     get:
       operationId: getFutureTick
-      tags: [futures]
+      tags:
+      - futures
       summary: Snapshot tick.
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/FuturesExpiryQuery'
-        - $ref: '#/components/parameters/ExchangeRequiredQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - $ref: '#/components/parameters/OptionMultiplierQuery'
-        - $ref: '#/components/parameters/TradingClassQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/FuturesExpiryQuery'
+      - $ref: '#/components/parameters/ExchangeRequiredQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/OptionMultiplierQuery'
+      - $ref: '#/components/parameters/TradingClassQuery'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Ticker' }
-
+              schema:
+                $ref: '#/components/schemas/Ticker'
+        '429': *id001
   /futures/{symbol}/rates:
     get:
       operationId: getFutureRates
-      tags: [futures]
+      tags:
+      - futures
       summary: Historical bars on a futures contract.
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/DurationQuery'
-        - $ref: '#/components/parameters/FuturesExpiryQuery'
-        - $ref: '#/components/parameters/ExchangeRequiredQuery'
-        - $ref: '#/components/parameters/BarSizeQuery'
-        - $ref: '#/components/parameters/EndDateTimeQuery'
-        - $ref: '#/components/parameters/WhatToShowQuery'
-        - $ref: '#/components/parameters/UseRTHQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - $ref: '#/components/parameters/OptionMultiplierQuery'
-        - $ref: '#/components/parameters/TradingClassQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/DurationQuery'
+      - $ref: '#/components/parameters/FuturesExpiryQuery'
+      - $ref: '#/components/parameters/ExchangeRequiredQuery'
+      - $ref: '#/components/parameters/BarSizeQuery'
+      - $ref: '#/components/parameters/EndDateTimeQuery'
+      - $ref: '#/components/parameters/WhatToShowQuery'
+      - $ref: '#/components/parameters/UseRTHQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/OptionMultiplierQuery'
+      - $ref: '#/components/parameters/TradingClassQuery'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BarsResponse' }
-
+              schema:
+                $ref: '#/components/schemas/BarsResponse'
+        '429': *id001
   /futures/{symbol}/rates/ta:
     post:
       operationId: getFutureRatesTA
-      tags: [futures]
+      tags:
+      - futures
       summary: Future contract bars + wickworks TA.
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/FuturesExpiryQuery'
-        - $ref: '#/components/parameters/ExchangeRequiredQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
-        - $ref: '#/components/parameters/OptionMultiplierQuery'
-        - $ref: '#/components/parameters/TradingClassQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/FuturesExpiryQuery'
+      - $ref: '#/components/parameters/ExchangeRequiredQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/OptionMultiplierQuery'
+      - $ref: '#/components/parameters/TradingClassQuery'
+      - *id002
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RatesTARequest' }
+            schema:
+              $ref: '#/components/schemas/RatesTARequest'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RatesTAResponse' }
-
-  # ─── cfd ─────────────────────────────────────────────────────────
+              schema:
+                $ref: '#/components/schemas/RatesTAResponse'
+        '429': *id001
   /cfd/{symbol}:
     get:
       operationId: getCFDContract
-      tags: [cfd]
+      tags:
+      - cfd
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ContractDetailsList' }
-
+              schema:
+                $ref: '#/components/schemas/ContractDetailsList'
+        '429': *id001
   /cfd/{symbol}/tick:
     get:
       operationId: getCFDTick
-      tags: [cfd]
+      tags:
+      - cfd
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Ticker' }
-
+              schema:
+                $ref: '#/components/schemas/Ticker'
+        '429': *id001
   /cfd/{symbol}/rates:
     get:
       operationId: getCFDRates
-      tags: [cfd]
+      tags:
+      - cfd
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/DurationQuery'
-        - $ref: '#/components/parameters/BarSizeQuery'
-        - $ref: '#/components/parameters/EndDateTimeQuery'
-        - $ref: '#/components/parameters/WhatToShowQuery'
-        - $ref: '#/components/parameters/UseRTHQuery'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/DurationQuery'
+      - $ref: '#/components/parameters/BarSizeQuery'
+      - $ref: '#/components/parameters/EndDateTimeQuery'
+      - $ref: '#/components/parameters/WhatToShowQuery'
+      - $ref: '#/components/parameters/UseRTHQuery'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BarsResponse' }
-
+              schema:
+                $ref: '#/components/schemas/BarsResponse'
+        '429': *id001
   /cfd/{symbol}/rates/ta:
     post:
       operationId: getCFDRatesTA
-      tags: [cfd]
+      tags:
+      - cfd
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - *id002
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RatesTARequest' }
+            schema:
+              $ref: '#/components/schemas/RatesTARequest'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RatesTAResponse' }
-
-  # ─── forex ───────────────────────────────────────────────────────
+              schema:
+                $ref: '#/components/schemas/RatesTAResponse'
+        '429': *id001
   /forex/{pair}:
     get:
       operationId: getForexContract
-      tags: [forex]
+      tags:
+      - forex
       parameters:
-        - $ref: '#/components/parameters/PairPath'
-        - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/PairPath'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ContractDetailsList' }
-
+              schema:
+                $ref: '#/components/schemas/ContractDetailsList'
+        '429': *id001
   /forex/{pair}/tick:
     get:
       operationId: getForexTick
-      tags: [forex]
+      tags:
+      - forex
       parameters:
-        - $ref: '#/components/parameters/PairPath'
-        - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/PairPath'
+      - $ref: '#/components/parameters/ExchangeQuery'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Ticker' }
-
+              schema:
+                $ref: '#/components/schemas/Ticker'
+        '429': *id001
   /forex/{pair}/rates:
     get:
       operationId: getForexRates
-      tags: [forex]
+      tags:
+      - forex
       parameters:
-        - $ref: '#/components/parameters/PairPath'
-        - $ref: '#/components/parameters/DurationQuery'
-        - $ref: '#/components/parameters/BarSizeQuery'
-        - $ref: '#/components/parameters/EndDateTimeQuery'
-        - $ref: '#/components/parameters/WhatToShowQuery'
-        - $ref: '#/components/parameters/UseRTHQuery'
-        - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/PairPath'
+      - $ref: '#/components/parameters/DurationQuery'
+      - $ref: '#/components/parameters/BarSizeQuery'
+      - $ref: '#/components/parameters/EndDateTimeQuery'
+      - $ref: '#/components/parameters/WhatToShowQuery'
+      - $ref: '#/components/parameters/UseRTHQuery'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BarsResponse' }
-
+              schema:
+                $ref: '#/components/schemas/BarsResponse'
+        '429': *id001
   /forex/{pair}/rates/ta:
     post:
       operationId: getForexRatesTA
-      tags: [forex]
+      tags:
+      - forex
       parameters:
-        - $ref: '#/components/parameters/PairPath'
-        - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/PairPath'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - *id002
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RatesTARequest' }
+            schema:
+              $ref: '#/components/schemas/RatesTARequest'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RatesTAResponse' }
-
-  # ─── crypto ──────────────────────────────────────────────────────
+              schema:
+                $ref: '#/components/schemas/RatesTAResponse'
+        '429': *id001
   /crypto/{symbol}:
     get:
       operationId: getCryptoContract
-      tags: [crypto]
+      tags:
+      - crypto
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ContractDetailsList' }
-
+              schema:
+                $ref: '#/components/schemas/ContractDetailsList'
+        '429': *id001
   /crypto/{symbol}/tick:
     get:
       operationId: getCryptoTick
-      tags: [crypto]
+      tags:
+      - crypto
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Ticker' }
-
+              schema:
+                $ref: '#/components/schemas/Ticker'
+        '429': *id001
   /crypto/{symbol}/rates:
     get:
       operationId: getCryptoRates
-      tags: [crypto]
+      tags:
+      - crypto
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/DurationQuery'
-        - $ref: '#/components/parameters/BarSizeQuery'
-        - $ref: '#/components/parameters/EndDateTimeQuery'
-        - $ref: '#/components/parameters/WhatToShowQuery'
-        - $ref: '#/components/parameters/UseRTHQuery'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/DurationQuery'
+      - $ref: '#/components/parameters/BarSizeQuery'
+      - $ref: '#/components/parameters/EndDateTimeQuery'
+      - $ref: '#/components/parameters/WhatToShowQuery'
+      - $ref: '#/components/parameters/UseRTHQuery'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BarsResponse' }
-
+              schema:
+                $ref: '#/components/schemas/BarsResponse'
+        '429': *id001
   /crypto/{symbol}/rates/ta:
     post:
       operationId: getCryptoRatesTA
-      tags: [crypto]
+      tags:
+      - crypto
       parameters:
-        - $ref: '#/components/parameters/SymbolPath'
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - $ref: '#/components/parameters/CurrencyQuery'
+      - $ref: '#/components/parameters/SymbolPath'
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - $ref: '#/components/parameters/CurrencyQuery'
+      - *id002
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RatesTARequest' }
+            schema:
+              $ref: '#/components/schemas/RatesTARequest'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RatesTAResponse' }
-
-  # ─── orders ──────────────────────────────────────────────────────
+              schema:
+                $ref: '#/components/schemas/RatesTAResponse'
+        '429': *id001
   /orders:
     get:
       operationId: listOrders
-      tags: [orders]
+      tags:
+      - orders
       summary: List currently-open trades.
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/TradesList' }
+              schema:
+                $ref: '#/components/schemas/TradesList'
     post:
       operationId: placeOrder
-      tags: [orders]
+      tags:
+      - orders
       summary: Place an order on any asset class.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/OrderRequest' }
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
       responses:
         '200':
           description: Submitted trade snapshot.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Trade' }
+              schema:
+                $ref: '#/components/schemas/Trade'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429': *id001
     delete:
       operationId: cancelAllOrders
-      tags: [orders]
+      tags:
+      - orders
       summary: Cancel every open order (USE WITH CARE).
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/CancelAllResponse' }
-
+              schema:
+                $ref: '#/components/schemas/CancelAllResponse'
+        '429': *id001
   /orders/{orderId}:
     get:
       operationId: getOrder
-      tags: [orders]
+      tags:
+      - orders
       summary: Get a single open trade by orderId.
       parameters:
-        - $ref: '#/components/parameters/OrderIdPath'
+      - $ref: '#/components/parameters/OrderIdPath'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Trade' }
+              schema:
+                $ref: '#/components/schemas/Trade'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429': *id001
     delete:
       operationId: cancelOrder
-      tags: [orders]
+      tags:
+      - orders
       summary: Cancel a single open order.
       parameters:
-        - $ref: '#/components/parameters/OrderIdPath'
+      - $ref: '#/components/parameters/OrderIdPath'
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/CancelOrderResponse' }
+              schema:
+                $ref: '#/components/schemas/CancelOrderResponse'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # ─── history ─────────────────────────────────────────────────────
+        '429': *id001
   /history/executions:
     get:
       operationId: getExecutions
-      tags: [history]
+      tags:
+      - history
       summary: Today's executions (broker-side fills feed).
       parameters:
-        - $ref: '#/components/parameters/AccountFilter'
-        - in: query
-          name: clientId
-          schema: { type: integer, nullable: true }
-        - in: query
-          name: secType
-          schema: { type: string, nullable: true }
-        - in: query
-          name: symbol
-          schema: { type: string, nullable: true }
-        - $ref: '#/components/parameters/ExchangeQuery'
-        - in: query
-          name: side
-          schema: { type: string, nullable: true }
-        - in: query
-          name: timeAfter
-          schema: { type: string, nullable: true, description: "'YYYYMMDD HH:MM:SS' UTC" }
+      - $ref: '#/components/parameters/AccountFilter'
+      - in: query
+        name: clientId
+        schema:
+          type: integer
+          nullable: true
+      - in: query
+        name: secType
+        schema:
+          type: string
+          nullable: true
+      - in: query
+        name: symbol
+        schema:
+          type: string
+          nullable: true
+      - $ref: '#/components/parameters/ExchangeQuery'
+      - in: query
+        name: side
+        schema:
+          type: string
+          nullable: true
+      - in: query
+        name: timeAfter
+        schema:
+          type: string
+          nullable: true
+          description: '''YYYYMMDD HH:MM:SS'' UTC'
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ExecutionsResponse' }
-
+              schema:
+                $ref: '#/components/schemas/ExecutionsResponse'
+        '429': *id001
   /history/completed_orders:
     get:
       operationId: getCompletedOrders
-      tags: [history]
+      tags:
+      - history
       summary: Completed orders (today + historical buffer).
       parameters:
-        - in: query
-          name: apiOnly
-          required: false
-          schema: { type: boolean, default: false }
+      - in: query
+        name: apiOnly
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - *id002
       responses:
         '200':
           description: ok
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/CompletedOrdersResponse' }
-
-# ─── components ────────────────────────────────────────────────────
+              schema:
+                $ref: '#/components/schemas/CompletedOrdersResponse'
+        '429': *id001
 components:
   parameters:
     SymbolPath:
       in: path
       name: symbol
       required: true
-      schema: { type: string, minLength: 1, maxLength: 32 }
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 32
     PairPath:
       in: path
       name: pair
       required: true
-      schema: { type: string, minLength: 6, maxLength: 12 }
+      schema:
+        type: string
+        minLength: 6
+        maxLength: 12
     OrderIdPath:
       in: path
       name: orderId
       required: true
-      schema: { type: integer }
+      schema:
+        type: integer
     ExchangeQuery:
       in: query
       name: exchange
       required: false
-      schema: { type: string, nullable: true }
+      schema:
+        type: string
+        nullable: true
     ExchangeRequiredQuery:
       in: query
       name: exchange
       required: true
-      schema: { type: string }
+      schema:
+        type: string
     CurrencyQuery:
       in: query
       name: currency
       required: false
-      schema: { type: string, nullable: true }
+      schema:
+        type: string
+        nullable: true
     PrimaryExchangeQuery:
       in: query
       name: primaryExchange
       required: false
-      schema: { type: string, nullable: true }
+      schema:
+        type: string
+        nullable: true
     OptionExpiryQuery:
       in: query
       name: expiry
       required: true
-      schema: { type: string, description: "YYYYMMDD or YYYYMM" }
+      schema:
+        type: string
+        description: YYYYMMDD or YYYYMM
     OptionStrikeQuery:
       in: query
       name: strike
       required: true
-      schema: { type: number }
+      schema:
+        type: number
     OptionRightQuery:
       in: query
       name: right
       required: true
-      schema: { type: string, description: "C/P (or CALL/PUT)" }
+      schema:
+        type: string
+        description: C/P (or CALL/PUT)
     OptionMultiplierQuery:
       in: query
       name: multiplier
       required: false
-      schema: { type: string, nullable: true }
+      schema:
+        type: string
+        nullable: true
     TradingClassQuery:
       in: query
       name: tradingClass
       required: false
-      schema: { type: string, nullable: true }
+      schema:
+        type: string
+        nullable: true
     FuturesExpiryQuery:
       in: query
       name: expiry
       required: true
-      schema: { type: string, description: "YYYYMM or YYYYMMDD" }
+      schema:
+        type: string
+        description: YYYYMM or YYYYMMDD
     DurationQuery:
       in: query
       name: duration
       required: true
-      schema: { type: string, description: "IBKR duration: '60 S' / '1 D' / '13 W' / '6 M' / '1 Y'" }
+      schema:
+        type: string
+        description: 'IBKR duration: ''60 S'' / ''1 D'' / ''13 W'' / ''6 M'' / ''1 Y'''
     BarSizeQuery:
       in: query
       name: barSize
       required: false
-      schema: { type: string, nullable: true, description: "'1h' / '1d' / '15m' etc." }
+      schema:
+        type: string
+        nullable: true
+        description: '''1h'' / ''1d'' / ''15m'' etc.'
     EndDateTimeQuery:
       in: query
       name: endDateTime
       required: false
-      schema: { type: string, nullable: true, description: "'' for now, or 'YYYYMMDD HH:MM:SS' UTC" }
+      schema:
+        type: string
+        nullable: true
+        description: ''''' for now, or ''YYYYMMDD HH:MM:SS'' UTC'
     StartDateTimeQuery:
       in: query
       name: startDateTime
       required: false
-      schema: { type: string, nullable: true }
+      schema:
+        type: string
+        nullable: true
     NumberOfTicksQuery:
       in: query
       name: numberOfTicks
       required: false
-      schema: { type: integer, minimum: 1, maximum: 1000, default: 1000 }
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 1000
+        default: 1000
     WhatToShowQuery:
       in: query
       name: whatToShow
       required: false
-      schema: { type: string, nullable: true, description: "TRADES / MIDPOINT / BID / ASK / ..." }
+      schema:
+        type: string
+        nullable: true
+        description: TRADES / MIDPOINT / BID / ASK / ...
     UseRTHQuery:
       in: query
       name: useRTH
       required: false
-      schema: { type: boolean, default: false }
+      schema:
+        type: boolean
+        default: false
     AccountFilter:
       in: query
       name: account
       required: false
-      schema: { type: string, nullable: true }
-
+      schema:
+        type: string
+        nullable: true
+    RefreshQuery:
+      in: query
+      name: refresh
+      required: false
+      description: |
+        Bypass the on-disk cache for this request. The fetched value is still written back to the cache so subsequent requests benefit. Default false — caching is transparent and recommended.
+      schema:
+        type: boolean
+        default: false
   responses:
     NotFound:
       description: Contract / order / account not found upstream.
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
     BadRequest:
       description: Request rejected for validation / business-rule reasons.
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
     UpstreamUnavailable:
       description: An upstream dep (wickworks / IB Gateway) is unreachable.
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
-
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    RateLimitNear:
+      description: |
+        Preemptive rate-limit gate fired before we'd have crossed IBKR's pacing cap. The `details` payload reports which rule tripped, current usage, the configured limit, and a `retry_after_sec` hint. Backoff and retry — IBKR access stays intact. Code = `RATE_LIMIT_NEAR`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
-    # ─── error envelope (aichteeteapee shape) ─────────────────────
     ErrorEnvelope:
       type: object
-      required: [code, message]
+      required:
+      - code
+      - message
       properties:
         code:
           type: string
@@ -966,403 +1155,722 @@ components:
           type: object
           nullable: true
           additionalProperties: true
-
-    # ─── system ───────────────────────────────────────────────────
     PingResponse:
       type: object
-      required: [status, connected]
+      required:
+      - status
+      - connected
       properties:
-        status: { type: string, examples: ["ok"] }
-        connected: { type: boolean }
-        serverVersion: { type: integer, nullable: true }
-        startTime: { type: string, nullable: true }
-        uptimeSeconds: { type: number, nullable: true }
-        msgsSent: { type: integer, nullable: true }
-        msgsRecv: { type: integer, nullable: true }
-
+        status:
+          type: string
+          examples:
+          - ok
+        connected:
+          type: boolean
+        serverVersion:
+          type: integer
+          nullable: true
+        startTime:
+          type: string
+          nullable: true
+        uptimeSeconds:
+          type: number
+          nullable: true
+        msgsSent:
+          type: integer
+          nullable: true
+        msgsRecv:
+          type: integer
+          nullable: true
     AccountsList:
       type: object
-      required: [accounts]
+      required:
+      - accounts
       properties:
         accounts:
           type: array
-          items: { type: string }
-
+          items:
+            type: string
     AccountSummaryEntry:
       type: object
       additionalProperties:
         type: object
         properties:
-          value: { type: string }
-          currency: { type: string }
-          modelCode: { type: string }
-
+          value:
+            type: string
+          currency:
+            type: string
+          modelCode:
+            type: string
     AccountSummary:
       type: object
-      required: [accounts]
+      required:
+      - accounts
       properties:
         accounts:
           type: object
-          additionalProperties: { $ref: '#/components/schemas/AccountSummaryEntry' }
-
+          additionalProperties:
+            $ref: '#/components/schemas/AccountSummaryEntry'
     Position:
       type: object
-      required: [account, contract, position, avgCost]
+      required:
+      - account
+      - contract
+      - position
+      - avgCost
       properties:
-        account: { type: string }
-        contract: { $ref: '#/components/schemas/Contract' }
-        position: { type: number }
-        avgCost: { type: number }
-
+        account:
+          type: string
+        contract:
+          $ref: '#/components/schemas/Contract'
+        position:
+          type: number
+        avgCost:
+          type: number
     PositionsList:
       type: object
-      required: [positions]
+      required:
+      - positions
       properties:
         positions:
           type: array
-          items: { $ref: '#/components/schemas/Position' }
-
-    # ─── contracts ────────────────────────────────────────────────
+          items:
+            $ref: '#/components/schemas/Position'
     Contract:
       type: object
-      required: [conid, symbol, secType, exchange, currency]
+      required:
+      - conid
+      - symbol
+      - secType
+      - exchange
+      - currency
       properties:
-        conid: { type: integer }
-        symbol: { type: string }
-        secType: { type: string }
-        exchange: { type: string }
-        primaryExchange: { type: string }
-        currency: { type: string }
-        lastTradeDateOrContractMonth: { type: string }
-        strike: { type: number }
-        right: { type: string }
-        multiplier: { type: string }
-        tradingClass: { type: string }
-        localSymbol: { type: string }
-
+        conid:
+          type: integer
+        symbol:
+          type: string
+        secType:
+          type: string
+        exchange:
+          type: string
+        primaryExchange:
+          type: string
+        currency:
+          type: string
+        lastTradeDateOrContractMonth:
+          type: string
+        strike:
+          type: number
+        right:
+          type: string
+        multiplier:
+          type: string
+        tradingClass:
+          type: string
+        localSymbol:
+          type: string
     ContractDetails:
       type: object
-      required: [contract]
+      required:
+      - contract
       properties:
-        contract: { $ref: '#/components/schemas/Contract' }
-        marketName: { type: string }
-        minTick: { type: number }
-        orderTypes: { type: array, items: { type: string } }
-        validExchanges: { type: array, items: { type: string } }
-        priceMagnifier: { type: integer }
-        longName: { type: string }
-        industry: { type: string }
-        category: { type: string }
-        subcategory: { type: string }
-        timeZoneId: { type: string }
-        tradingHours: { type: string }
-        liquidHours: { type: string }
-        evRule: { type: string }
-        evMultiplier: { type: number }
-
+        contract:
+          $ref: '#/components/schemas/Contract'
+        marketName:
+          type: string
+        minTick:
+          type: number
+        orderTypes:
+          type: array
+          items:
+            type: string
+        validExchanges:
+          type: array
+          items:
+            type: string
+        priceMagnifier:
+          type: integer
+        longName:
+          type: string
+        industry:
+          type: string
+        category:
+          type: string
+        subcategory:
+          type: string
+        timeZoneId:
+          type: string
+        tradingHours:
+          type: string
+        liquidHours:
+          type: string
+        evRule:
+          type: string
+        evMultiplier:
+          type: number
     ContractDetailsList:
       type: object
-      required: [contracts]
+      required:
+      - contracts
       properties:
         contracts:
           type: array
-          items: { $ref: '#/components/schemas/ContractDetails' }
-
-    # ─── market data ──────────────────────────────────────────────
+          items:
+            $ref: '#/components/schemas/ContractDetails'
     Greeks:
       type: object
       properties:
-        delta: { type: number, nullable: true }
-        gamma: { type: number, nullable: true }
-        theta: { type: number, nullable: true }
-        vega: { type: number, nullable: true }
-        impliedVol: { type: number, nullable: true }
-        optPrice: { type: number, nullable: true }
-        undPrice: { type: number, nullable: true }
-
+        delta:
+          type: number
+          nullable: true
+        gamma:
+          type: number
+          nullable: true
+        theta:
+          type: number
+          nullable: true
+        vega:
+          type: number
+          nullable: true
+        impliedVol:
+          type: number
+          nullable: true
+        optPrice:
+          type: number
+          nullable: true
+        undPrice:
+          type: number
+          nullable: true
     Ticker:
       type: object
-      required: [contract]
+      required:
+      - contract
       properties:
-        contract: { $ref: '#/components/schemas/Contract' }
-        time: { type: string, nullable: true }
-        bid: { type: number, nullable: true }
-        bidSize: { type: number, nullable: true }
-        ask: { type: number, nullable: true }
-        askSize: { type: number, nullable: true }
-        last: { type: number, nullable: true }
-        lastSize: { type: number, nullable: true }
-        close: { type: number, nullable: true }
-        open: { type: number, nullable: true }
-        high: { type: number, nullable: true }
-        low: { type: number, nullable: true }
-        volume: { type: number, nullable: true }
-        vwap: { type: number, nullable: true }
-        halted: { type: number, nullable: true }
-        modelGreeks: { allOf: [{ $ref: '#/components/schemas/Greeks' }], nullable: true }
-        bidGreeks: { allOf: [{ $ref: '#/components/schemas/Greeks' }], nullable: true }
-        askGreeks: { allOf: [{ $ref: '#/components/schemas/Greeks' }], nullable: true }
-        lastGreeks: { allOf: [{ $ref: '#/components/schemas/Greeks' }], nullable: true }
-
+        contract:
+          $ref: '#/components/schemas/Contract'
+        time:
+          type: string
+          nullable: true
+        bid:
+          type: number
+          nullable: true
+        bidSize:
+          type: number
+          nullable: true
+        ask:
+          type: number
+          nullable: true
+        askSize:
+          type: number
+          nullable: true
+        last:
+          type: number
+          nullable: true
+        lastSize:
+          type: number
+          nullable: true
+        close:
+          type: number
+          nullable: true
+        open:
+          type: number
+          nullable: true
+        high:
+          type: number
+          nullable: true
+        low:
+          type: number
+          nullable: true
+        volume:
+          type: number
+          nullable: true
+        vwap:
+          type: number
+          nullable: true
+        halted:
+          type: number
+          nullable: true
+        modelGreeks:
+          allOf:
+          - $ref: '#/components/schemas/Greeks'
+          nullable: true
+        bidGreeks:
+          allOf:
+          - $ref: '#/components/schemas/Greeks'
+          nullable: true
+        askGreeks:
+          allOf:
+          - $ref: '#/components/schemas/Greeks'
+          nullable: true
+        lastGreeks:
+          allOf:
+          - $ref: '#/components/schemas/Greeks'
+          nullable: true
     Bar:
       type: object
-      required: [time, open, high, low, close]
+      required:
+      - time
+      - open
+      - high
+      - low
+      - close
       properties:
-        time: { type: string }
-        open: { type: number }
-        high: { type: number }
-        low: { type: number }
-        close: { type: number }
-        volume: { type: number, nullable: true }
-        average: { type: number, nullable: true }
-        barCount: { type: integer, nullable: true }
-
+        time:
+          type: string
+        open:
+          type: number
+        high:
+          type: number
+        low:
+          type: number
+        close:
+          type: number
+        volume:
+          type: number
+          nullable: true
+        average:
+          type: number
+          nullable: true
+        barCount:
+          type: integer
+          nullable: true
     BarsResponse:
       type: object
-      required: [bars]
+      required:
+      - bars
       properties:
-        symbol: { type: string, nullable: true }
-        pair: { type: string, nullable: true }
-        secType: { type: string, nullable: true }
-        expiry: { type: string, nullable: true }
-        strike: { type: number, nullable: true }
-        right: { type: string, nullable: true }
+        symbol:
+          type: string
+          nullable: true
+        pair:
+          type: string
+          nullable: true
+        secType:
+          type: string
+          nullable: true
+        expiry:
+          type: string
+          nullable: true
+        strike:
+          type: number
+          nullable: true
+        right:
+          type: string
+          nullable: true
         bars:
           type: array
-          items: { $ref: '#/components/schemas/Bar' }
-
+          items:
+            $ref: '#/components/schemas/Bar'
     Tick:
       type: object
-      required: [time]
+      required:
+      - time
       properties:
-        time: { type: string }
-        price: { type: number, nullable: true }
-        size: { type: number, nullable: true }
-        bid: { type: number, nullable: true }
-        ask: { type: number, nullable: true }
-        bidSize: { type: number, nullable: true }
-        askSize: { type: number, nullable: true }
-
+        time:
+          type: string
+        price:
+          type: number
+          nullable: true
+        size:
+          type: number
+          nullable: true
+        bid:
+          type: number
+          nullable: true
+        ask:
+          type: number
+          nullable: true
+        bidSize:
+          type: number
+          nullable: true
+        askSize:
+          type: number
+          nullable: true
     TicksResponse:
       type: object
-      required: [ticks]
+      required:
+      - ticks
       properties:
-        symbol: { type: string, nullable: true }
-        secType: { type: string, nullable: true }
+        symbol:
+          type: string
+          nullable: true
+        secType:
+          type: string
+          nullable: true
         ticks:
           type: array
-          items: { $ref: '#/components/schemas/Tick' }
-
-    # ─── TA enrichment ────────────────────────────────────────────
+          items:
+            $ref: '#/components/schemas/Tick'
     RatesTARequest:
       type: object
-      required: [duration]
+      required:
+      - duration
       properties:
-        duration: { type: string, description: "IBKR duration string (e.g. '30 D', '1 Y')" }
-        barSize: { type: string, nullable: true }
-        endDateTime: { type: string, nullable: true }
-        whatToShow: { type: string, nullable: true }
-        useRTH: { type: boolean, default: false }
-        indicators: { type: object, additionalProperties: true }
-        recentBars: { type: integer, nullable: true }
-
+        duration:
+          type: string
+          description: IBKR duration string (e.g. '30 D', '1 Y')
+        barSize:
+          type: string
+          nullable: true
+        endDateTime:
+          type: string
+          nullable: true
+        whatToShow:
+          type: string
+          nullable: true
+        useRTH:
+          type: boolean
+          default: false
+        indicators:
+          type: object
+          additionalProperties: true
+        recentBars:
+          type: integer
+          nullable: true
     RatesTAResponse:
       type: object
-      required: [bars]
+      required:
+      - bars
       properties:
-        symbol: { type: string, nullable: true }
-        secType: { type: string, nullable: true }
+        symbol:
+          type: string
+          nullable: true
+        secType:
+          type: string
+          nullable: true
         bars:
           type: array
-          items: { $ref: '#/components/schemas/Bar' }
-        ta: { type: object, additionalProperties: true, nullable: true }
-        asOf: { type: string, nullable: true }
-
-    # ─── option chains ────────────────────────────────────────────
+          items:
+            $ref: '#/components/schemas/Bar'
+        ta:
+          type: object
+          additionalProperties: true
+          nullable: true
+        asOf:
+          type: string
+          nullable: true
     OptionChainEntry:
       type: object
       properties:
-        exchange: { type: string }
-        tradingClass: { type: string }
-        multiplier: { type: string }
+        exchange:
+          type: string
+        tradingClass:
+          type: string
+        multiplier:
+          type: string
         expirations:
           type: array
-          items: { type: string }
+          items:
+            type: string
         strikes:
           type: array
-          items: { type: number }
-
+          items:
+            type: number
     OptionChain:
       type: object
-      required: [symbol, chains]
+      required:
+      - symbol
+      - chains
       properties:
-        symbol: { type: string }
-        underlyingConId: { type: integer, nullable: true }
+        symbol:
+          type: string
+        underlyingConId:
+          type: integer
+          nullable: true
         chains:
           type: array
-          items: { $ref: '#/components/schemas/OptionChainEntry' }
-
-    # ─── orders ───────────────────────────────────────────────────
+          items:
+            $ref: '#/components/schemas/OptionChainEntry'
     OrderRequest:
       type: object
-      required: [assetClass, symbol, action, quantity]
+      required:
+      - assetClass
+      - symbol
+      - action
+      - quantity
       properties:
-        assetClass: { type: string, description: "stock / option / future / cfd / forex / crypto" }
-        symbol: { type: string }
-        expiry: { type: string, nullable: true }
-        strike: { type: number, nullable: true }
-        right: { type: string, nullable: true }
-        exchange: { type: string, nullable: true }
-        currency: { type: string, nullable: true }
-        multiplier: { type: string, nullable: true }
-        tradingClass: { type: string, nullable: true }
-        primaryExchange: { type: string, nullable: true }
-        conid: { type: integer, nullable: true }
-        action: { type: string, description: "BUY or SELL" }
-        quantity: { type: number, minimum: 0, exclusiveMinimum: true }
-        orderType: { type: string, default: MKT }
-        lmtPrice: { type: number, nullable: true }
-        auxPrice: { type: number, nullable: true }
-        tif: { type: string, default: DAY }
-        outsideRth: { type: boolean, default: false }
-        transmit: { type: boolean, default: true }
-        account: { type: string, nullable: true }
-        goodAfterTime: { type: string, nullable: true }
-        goodTillDate: { type: string, nullable: true }
-        ocaGroup: { type: string, nullable: true }
-        parentId: { type: integer, nullable: true }
-
+        assetClass:
+          type: string
+          description: stock / option / future / cfd / forex / crypto
+        symbol:
+          type: string
+        expiry:
+          type: string
+          nullable: true
+        strike:
+          type: number
+          nullable: true
+        right:
+          type: string
+          nullable: true
+        exchange:
+          type: string
+          nullable: true
+        currency:
+          type: string
+          nullable: true
+        multiplier:
+          type: string
+          nullable: true
+        tradingClass:
+          type: string
+          nullable: true
+        primaryExchange:
+          type: string
+          nullable: true
+        conid:
+          type: integer
+          nullable: true
+        action:
+          type: string
+          description: BUY or SELL
+        quantity:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+        orderType:
+          type: string
+          default: MKT
+        lmtPrice:
+          type: number
+          nullable: true
+        auxPrice:
+          type: number
+          nullable: true
+        tif:
+          type: string
+          default: DAY
+        outsideRth:
+          type: boolean
+          default: false
+        transmit:
+          type: boolean
+          default: true
+        account:
+          type: string
+          nullable: true
+        goodAfterTime:
+          type: string
+          nullable: true
+        goodTillDate:
+          type: string
+          nullable: true
+        ocaGroup:
+          type: string
+          nullable: true
+        parentId:
+          type: integer
+          nullable: true
     OrderStatus:
       type: object
       properties:
-        status: { type: string }
-        filled: { type: number }
-        remaining: { type: number }
-        avgFillPrice: { type: number }
-        permId: { type: integer }
-        lastFillPrice: { type: number }
-        whyHeld: { type: string }
-        mktCapPrice: { type: number }
-
+        status:
+          type: string
+        filled:
+          type: number
+        remaining:
+          type: number
+        avgFillPrice:
+          type: number
+        permId:
+          type: integer
+        lastFillPrice:
+          type: number
+        whyHeld:
+          type: string
+        mktCapPrice:
+          type: number
     Order:
       type: object
       properties:
-        orderId: { type: integer }
-        permId: { type: integer }
-        clientId: { type: integer }
-        action: { type: string }
-        totalQuantity: { type: number }
-        orderType: { type: string }
-        lmtPrice: { type: number, nullable: true }
-        auxPrice: { type: number, nullable: true }
-        tif: { type: string }
-        outsideRth: { type: boolean }
-        transmit: { type: boolean }
-        account: { type: string }
-        parentId: { type: integer }
-        ocaGroup: { type: string }
-        goodAfterTime: { type: string }
-        goodTillDate: { type: string }
-
+        orderId:
+          type: integer
+        permId:
+          type: integer
+        clientId:
+          type: integer
+        action:
+          type: string
+        totalQuantity:
+          type: number
+        orderType:
+          type: string
+        lmtPrice:
+          type: number
+          nullable: true
+        auxPrice:
+          type: number
+          nullable: true
+        tif:
+          type: string
+        outsideRth:
+          type: boolean
+        transmit:
+          type: boolean
+        account:
+          type: string
+        parentId:
+          type: integer
+        ocaGroup:
+          type: string
+        goodAfterTime:
+          type: string
+        goodTillDate:
+          type: string
     Trade:
       type: object
       properties:
-        contract: { $ref: '#/components/schemas/Contract' }
-        order: { $ref: '#/components/schemas/Order' }
-        orderStatus: { $ref: '#/components/schemas/OrderStatus' }
+        contract:
+          $ref: '#/components/schemas/Contract'
+        order:
+          $ref: '#/components/schemas/Order'
+        orderStatus:
+          $ref: '#/components/schemas/OrderStatus'
         fills:
           type: array
-          items: { type: object, additionalProperties: true }
+          items:
+            type: object
+            additionalProperties: true
         log:
           type: array
-          items: { type: object, additionalProperties: true }
-
+          items:
+            type: object
+            additionalProperties: true
     TradesList:
       type: object
-      required: [trades]
+      required:
+      - trades
       properties:
         trades:
           type: array
-          items: { $ref: '#/components/schemas/Trade' }
-
+          items:
+            $ref: '#/components/schemas/Trade'
     CancelOrderResponse:
       type: object
       properties:
-        status: { type: string, examples: ["cancelling"] }
-        orderId: { type: integer }
-
+        status:
+          type: string
+          examples:
+          - cancelling
+        orderId:
+          type: integer
     CancelAllResponse:
       type: object
       properties:
-        status: { type: string, examples: ["global_cancel_requested"] }
-
-    # ─── combo / exercise ─────────────────────────────────────────
+        status:
+          type: string
+          examples:
+          - global_cancel_requested
     ComboLegSpec:
       type: object
-      required: [conid, action]
+      required:
+      - conid
+      - action
       properties:
-        conid: { type: integer }
-        ratio: { type: integer, default: 1 }
-        action: { type: string, description: "BUY / SELL" }
-        exchange: { type: string, default: SMART }
-
+        conid:
+          type: integer
+        ratio:
+          type: integer
+          default: 1
+        action:
+          type: string
+          description: BUY / SELL
+        exchange:
+          type: string
+          default: SMART
     ComboOrderRequest:
       type: object
-      required: [symbol, legs, action, quantity]
+      required:
+      - symbol
+      - legs
+      - action
+      - quantity
       properties:
-        symbol: { type: string }
+        symbol:
+          type: string
         legs:
           type: array
-          items: { $ref: '#/components/schemas/ComboLegSpec' }
-        action: { type: string }
-        quantity: { type: integer }
-        orderType: { type: string, default: LMT }
-        lmtPrice: { type: number, nullable: true }
-        tif: { type: string, default: DAY }
-        exchange: { type: string, default: SMART }
-        currency: { type: string, default: USD }
-        account: { type: string, nullable: true }
-
+          items:
+            $ref: '#/components/schemas/ComboLegSpec'
+        action:
+          type: string
+        quantity:
+          type: integer
+        orderType:
+          type: string
+          default: LMT
+        lmtPrice:
+          type: number
+          nullable: true
+        tif:
+          type: string
+          default: DAY
+        exchange:
+          type: string
+          default: SMART
+        currency:
+          type: string
+          default: USD
+        account:
+          type: string
+          nullable: true
     ExerciseRequest:
       type: object
-      required: [conid, action, quantity, account]
+      required:
+      - conid
+      - action
+      - quantity
+      - account
       properties:
-        conid: { type: integer }
-        action: { type: string, description: "EXERCISE or LAPSE" }
-        quantity: { type: integer, minimum: 1 }
-        account: { type: string }
-        override: { type: boolean, default: false }
-
+        conid:
+          type: integer
+        action:
+          type: string
+          description: EXERCISE or LAPSE
+        quantity:
+          type: integer
+          minimum: 1
+        account:
+          type: string
+        override:
+          type: boolean
+          default: false
     ExerciseResponse:
       type: object
       properties:
-        status: { type: string }
-        contract: { $ref: '#/components/schemas/Contract' }
-        action: { type: string }
-
-    # ─── history ──────────────────────────────────────────────────
+        status:
+          type: string
+        contract:
+          $ref: '#/components/schemas/Contract'
+        action:
+          type: string
     Fill:
       type: object
       properties:
-        contract: { $ref: '#/components/schemas/Contract' }
-        execution: { type: object, additionalProperties: true }
+        contract:
+          $ref: '#/components/schemas/Contract'
+        execution:
+          type: object
+          additionalProperties: true
         commissionReport:
           type: object
           additionalProperties: true
           nullable: true
-        time: { type: string }
-
+        time:
+          type: string
     ExecutionsResponse:
       type: object
-      required: [fills]
+      required:
+      - fills
       properties:
         fills:
           type: array
-          items: { $ref: '#/components/schemas/Fill' }
-
+          items:
+            $ref: '#/components/schemas/Fill'
     CompletedOrdersResponse:
       type: object
-      required: [trades]
+      required:
+      - trades
       properties:
         trades:
           type: array

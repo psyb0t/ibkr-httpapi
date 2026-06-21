@@ -6,6 +6,7 @@ import httpx
 
 from ... import errors
 from ...client import AuthenticatedClient, Client
+from ...models.error_envelope import ErrorEnvelope
 from ...models.ticker import Ticker
 from ...types import UNSET, Response, Unset
 
@@ -17,7 +18,6 @@ def _get_kwargs(
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
 ) -> dict[str, Any]:
-
     params: dict[str, Any] = {}
 
     json_exchange: None | str | Unset
@@ -54,11 +54,16 @@ def _get_kwargs(
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Ticker | None:
+def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> ErrorEnvelope | Ticker | None:
     if response.status_code == 200:
         response_200 = Ticker.from_dict(response.json())
 
         return response_200
+
+    if response.status_code == 429:
+        response_429 = ErrorEnvelope.from_dict(response.json())
+
+        return response_429
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -66,7 +71,9 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[Ticker]:
+def _build_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[ErrorEnvelope | Ticker]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -82,7 +89,7 @@ def sync_detailed(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
-) -> Response[Ticker]:
+) -> Response[ErrorEnvelope | Ticker]:
     """Snapshot tick (bid/ask/last + volume/OHLC for the session).
 
     Args:
@@ -96,7 +103,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Ticker]
+        Response[ErrorEnvelope | Ticker]
     """
 
     kwargs = _get_kwargs(
@@ -120,7 +127,7 @@ def sync(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
-) -> Ticker | None:
+) -> ErrorEnvelope | Ticker | None:
     """Snapshot tick (bid/ask/last + volume/OHLC for the session).
 
     Args:
@@ -134,7 +141,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Ticker
+        ErrorEnvelope | Ticker
     """
 
     return sync_detailed(
@@ -153,7 +160,7 @@ async def asyncio_detailed(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
-) -> Response[Ticker]:
+) -> Response[ErrorEnvelope | Ticker]:
     """Snapshot tick (bid/ask/last + volume/OHLC for the session).
 
     Args:
@@ -167,7 +174,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Ticker]
+        Response[ErrorEnvelope | Ticker]
     """
 
     kwargs = _get_kwargs(
@@ -189,7 +196,7 @@ async def asyncio(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
-) -> Ticker | None:
+) -> ErrorEnvelope | Ticker | None:
     """Snapshot tick (bid/ask/last + volume/OHLC for the session).
 
     Args:
@@ -203,7 +210,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Ticker
+        ErrorEnvelope | Ticker
     """
 
     return (

@@ -7,6 +7,7 @@ import httpx
 from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.bars_response import BarsResponse
+from ...models.error_envelope import ErrorEnvelope
 from ...types import UNSET, Response, Unset
 
 
@@ -21,8 +22,8 @@ def _get_kwargs(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> dict[str, Any]:
-
     params: dict[str, Any] = {}
 
     params["duration"] = duration
@@ -71,6 +72,8 @@ def _get_kwargs(
         json_primary_exchange = primary_exchange
     params["primaryExchange"] = json_primary_exchange
 
+    params["refresh"] = refresh
+
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
     _kwargs: dict[str, Any] = {
@@ -84,11 +87,18 @@ def _get_kwargs(
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> BarsResponse | None:
+def _parse_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> BarsResponse | ErrorEnvelope | None:
     if response.status_code == 200:
         response_200 = BarsResponse.from_dict(response.json())
 
         return response_200
+
+    if response.status_code == 429:
+        response_429 = ErrorEnvelope.from_dict(response.json())
+
+        return response_429
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -96,7 +106,9 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[BarsResponse]:
+def _build_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[BarsResponse | ErrorEnvelope]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -117,7 +129,8 @@ def sync_detailed(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
-) -> Response[BarsResponse]:
+    refresh: bool | Unset = False,
+) -> Response[BarsResponse | ErrorEnvelope]:
     """Historical OHLC bars.
 
     Args:
@@ -130,13 +143,14 @@ def sync_detailed(
         exchange (None | str | Unset):
         currency (None | str | Unset):
         primary_exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[BarsResponse]
+        Response[BarsResponse | ErrorEnvelope]
     """
 
     kwargs = _get_kwargs(
@@ -149,6 +163,7 @@ def sync_detailed(
         exchange=exchange,
         currency=currency,
         primary_exchange=primary_exchange,
+        refresh=refresh,
     )
 
     response = client.get_httpx_client().request(
@@ -170,7 +185,8 @@ def sync(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
-) -> BarsResponse | None:
+    refresh: bool | Unset = False,
+) -> BarsResponse | ErrorEnvelope | None:
     """Historical OHLC bars.
 
     Args:
@@ -183,13 +199,14 @@ def sync(
         exchange (None | str | Unset):
         currency (None | str | Unset):
         primary_exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        BarsResponse
+        BarsResponse | ErrorEnvelope
     """
 
     return sync_detailed(
@@ -203,6 +220,7 @@ def sync(
         exchange=exchange,
         currency=currency,
         primary_exchange=primary_exchange,
+        refresh=refresh,
     ).parsed
 
 
@@ -218,7 +236,8 @@ async def asyncio_detailed(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
-) -> Response[BarsResponse]:
+    refresh: bool | Unset = False,
+) -> Response[BarsResponse | ErrorEnvelope]:
     """Historical OHLC bars.
 
     Args:
@@ -231,13 +250,14 @@ async def asyncio_detailed(
         exchange (None | str | Unset):
         currency (None | str | Unset):
         primary_exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[BarsResponse]
+        Response[BarsResponse | ErrorEnvelope]
     """
 
     kwargs = _get_kwargs(
@@ -250,6 +270,7 @@ async def asyncio_detailed(
         exchange=exchange,
         currency=currency,
         primary_exchange=primary_exchange,
+        refresh=refresh,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -269,7 +290,8 @@ async def asyncio(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
-) -> BarsResponse | None:
+    refresh: bool | Unset = False,
+) -> BarsResponse | ErrorEnvelope | None:
     """Historical OHLC bars.
 
     Args:
@@ -282,13 +304,14 @@ async def asyncio(
         exchange (None | str | Unset):
         currency (None | str | Unset):
         primary_exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        BarsResponse
+        BarsResponse | ErrorEnvelope
     """
 
     return (
@@ -303,5 +326,6 @@ async def asyncio(
             exchange=exchange,
             currency=currency,
             primary_exchange=primary_exchange,
+            refresh=refresh,
         )
     ).parsed

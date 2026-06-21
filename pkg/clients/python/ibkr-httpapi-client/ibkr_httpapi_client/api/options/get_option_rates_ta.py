@@ -6,6 +6,7 @@ import httpx
 
 from ... import errors
 from ...client import AuthenticatedClient, Client
+from ...models.error_envelope import ErrorEnvelope
 from ...models.rates_ta_request import RatesTARequest
 from ...models.rates_ta_response import RatesTAResponse
 from ...types import UNSET, Response, Unset
@@ -22,6 +23,7 @@ def _get_kwargs(
     currency: None | str | Unset = UNSET,
     multiplier: None | str | Unset = UNSET,
     trading_class: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> dict[str, Any]:
     headers: dict[str, Any] = {}
 
@@ -61,6 +63,8 @@ def _get_kwargs(
         json_trading_class = trading_class
     params["tradingClass"] = json_trading_class
 
+    params["refresh"] = refresh
+
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
     _kwargs: dict[str, Any] = {
@@ -79,11 +83,18 @@ def _get_kwargs(
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> RatesTAResponse | None:
+def _parse_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> ErrorEnvelope | RatesTAResponse | None:
     if response.status_code == 200:
         response_200 = RatesTAResponse.from_dict(response.json())
 
         return response_200
+
+    if response.status_code == 429:
+        response_429 = ErrorEnvelope.from_dict(response.json())
+
+        return response_429
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -91,7 +102,9 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[RatesTAResponse]:
+def _build_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[ErrorEnvelope | RatesTAResponse]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -112,7 +125,8 @@ def sync_detailed(
     currency: None | str | Unset = UNSET,
     multiplier: None | str | Unset = UNSET,
     trading_class: None | str | Unset = UNSET,
-) -> Response[RatesTAResponse]:
+    refresh: bool | Unset = False,
+) -> Response[ErrorEnvelope | RatesTAResponse]:
     """Option contract bars + wickworks TA.
 
     Args:
@@ -124,6 +138,7 @@ def sync_detailed(
         currency (None | str | Unset):
         multiplier (None | str | Unset):
         trading_class (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
         body (RatesTARequest):
 
     Raises:
@@ -131,7 +146,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[RatesTAResponse]
+        Response[ErrorEnvelope | RatesTAResponse]
     """
 
     kwargs = _get_kwargs(
@@ -144,6 +159,7 @@ def sync_detailed(
         currency=currency,
         multiplier=multiplier,
         trading_class=trading_class,
+        refresh=refresh,
     )
 
     response = client.get_httpx_client().request(
@@ -165,7 +181,8 @@ def sync(
     currency: None | str | Unset = UNSET,
     multiplier: None | str | Unset = UNSET,
     trading_class: None | str | Unset = UNSET,
-) -> RatesTAResponse | None:
+    refresh: bool | Unset = False,
+) -> ErrorEnvelope | RatesTAResponse | None:
     """Option contract bars + wickworks TA.
 
     Args:
@@ -177,6 +194,7 @@ def sync(
         currency (None | str | Unset):
         multiplier (None | str | Unset):
         trading_class (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
         body (RatesTARequest):
 
     Raises:
@@ -184,7 +202,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        RatesTAResponse
+        ErrorEnvelope | RatesTAResponse
     """
 
     return sync_detailed(
@@ -198,6 +216,7 @@ def sync(
         currency=currency,
         multiplier=multiplier,
         trading_class=trading_class,
+        refresh=refresh,
     ).parsed
 
 
@@ -213,7 +232,8 @@ async def asyncio_detailed(
     currency: None | str | Unset = UNSET,
     multiplier: None | str | Unset = UNSET,
     trading_class: None | str | Unset = UNSET,
-) -> Response[RatesTAResponse]:
+    refresh: bool | Unset = False,
+) -> Response[ErrorEnvelope | RatesTAResponse]:
     """Option contract bars + wickworks TA.
 
     Args:
@@ -225,6 +245,7 @@ async def asyncio_detailed(
         currency (None | str | Unset):
         multiplier (None | str | Unset):
         trading_class (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
         body (RatesTARequest):
 
     Raises:
@@ -232,7 +253,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[RatesTAResponse]
+        Response[ErrorEnvelope | RatesTAResponse]
     """
 
     kwargs = _get_kwargs(
@@ -245,6 +266,7 @@ async def asyncio_detailed(
         currency=currency,
         multiplier=multiplier,
         trading_class=trading_class,
+        refresh=refresh,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -264,7 +286,8 @@ async def asyncio(
     currency: None | str | Unset = UNSET,
     multiplier: None | str | Unset = UNSET,
     trading_class: None | str | Unset = UNSET,
-) -> RatesTAResponse | None:
+    refresh: bool | Unset = False,
+) -> ErrorEnvelope | RatesTAResponse | None:
     """Option contract bars + wickworks TA.
 
     Args:
@@ -276,6 +299,7 @@ async def asyncio(
         currency (None | str | Unset):
         multiplier (None | str | Unset):
         trading_class (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
         body (RatesTARequest):
 
     Raises:
@@ -283,7 +307,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        RatesTAResponse
+        ErrorEnvelope | RatesTAResponse
     """
 
     return (
@@ -298,5 +322,6 @@ async def asyncio(
             currency=currency,
             multiplier=multiplier,
             trading_class=trading_class,
+            refresh=refresh,
         )
     ).parsed

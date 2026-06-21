@@ -6,17 +6,20 @@ import httpx
 from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.completed_orders_response import CompletedOrdersResponse
+from ...models.error_envelope import ErrorEnvelope
 from ...types import UNSET, Response, Unset
 
 
 def _get_kwargs(
     *,
     api_only: bool | Unset = False,
+    refresh: bool | Unset = False,
 ) -> dict[str, Any]:
-
     params: dict[str, Any] = {}
 
     params["apiOnly"] = api_only
+
+    params["refresh"] = refresh
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -31,11 +34,16 @@ def _get_kwargs(
 
 def _parse_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> CompletedOrdersResponse | None:
+) -> CompletedOrdersResponse | ErrorEnvelope | None:
     if response.status_code == 200:
         response_200 = CompletedOrdersResponse.from_dict(response.json())
 
         return response_200
+
+    if response.status_code == 429:
+        response_429 = ErrorEnvelope.from_dict(response.json())
+
+        return response_429
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -45,7 +53,7 @@ def _parse_response(
 
 def _build_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[CompletedOrdersResponse]:
+) -> Response[CompletedOrdersResponse | ErrorEnvelope]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -58,22 +66,25 @@ def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
     api_only: bool | Unset = False,
-) -> Response[CompletedOrdersResponse]:
+    refresh: bool | Unset = False,
+) -> Response[CompletedOrdersResponse | ErrorEnvelope]:
     """Completed orders (today + historical buffer).
 
     Args:
         api_only (bool | Unset):  Default: False.
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[CompletedOrdersResponse]
+        Response[CompletedOrdersResponse | ErrorEnvelope]
     """
 
     kwargs = _get_kwargs(
         api_only=api_only,
+        refresh=refresh,
     )
 
     response = client.get_httpx_client().request(
@@ -87,23 +98,26 @@ def sync(
     *,
     client: AuthenticatedClient | Client,
     api_only: bool | Unset = False,
-) -> CompletedOrdersResponse | None:
+    refresh: bool | Unset = False,
+) -> CompletedOrdersResponse | ErrorEnvelope | None:
     """Completed orders (today + historical buffer).
 
     Args:
         api_only (bool | Unset):  Default: False.
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        CompletedOrdersResponse
+        CompletedOrdersResponse | ErrorEnvelope
     """
 
     return sync_detailed(
         client=client,
         api_only=api_only,
+        refresh=refresh,
     ).parsed
 
 
@@ -111,22 +125,25 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
     api_only: bool | Unset = False,
-) -> Response[CompletedOrdersResponse]:
+    refresh: bool | Unset = False,
+) -> Response[CompletedOrdersResponse | ErrorEnvelope]:
     """Completed orders (today + historical buffer).
 
     Args:
         api_only (bool | Unset):  Default: False.
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[CompletedOrdersResponse]
+        Response[CompletedOrdersResponse | ErrorEnvelope]
     """
 
     kwargs = _get_kwargs(
         api_only=api_only,
+        refresh=refresh,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -138,23 +155,26 @@ async def asyncio(
     *,
     client: AuthenticatedClient | Client,
     api_only: bool | Unset = False,
-) -> CompletedOrdersResponse | None:
+    refresh: bool | Unset = False,
+) -> CompletedOrdersResponse | ErrorEnvelope | None:
     """Completed orders (today + historical buffer).
 
     Args:
         api_only (bool | Unset):  Default: False.
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        CompletedOrdersResponse
+        CompletedOrdersResponse | ErrorEnvelope
     """
 
     return (
         await asyncio_detailed(
             client=client,
             api_only=api_only,
+            refresh=refresh,
         )
     ).parsed

@@ -260,25 +260,19 @@ def _wickworks_post(payload: dict) -> dict:
         ) from exc
 
 
-async def rates_with_ta(
+def ta_enrich(
     contract,
+    bars: list[dict],
     *,
-    duration: str,
-    bar_size: str | None,
-    end_datetime: str | None,
-    what_to_show: str | None,
-    use_rth: bool,
     indicators: dict,
     recent_bars: int | None = None,
 ) -> dict:
-    bars = await historical_bars(
-        contract,
-        duration=duration,
-        bar_size=bar_size,
-        end_datetime=end_datetime,
-        what_to_show=what_to_show,
-        use_rth=use_rth,
-    )
+    """Wickworks TA enrichment phase. Caller supplies bars (typically
+    from `cache_bars.get_or_fetch`); we just POST them to wickworks
+    and shape the response.
+
+    Split out from the (now deprecated) `rates_with_ta` so impl.py can
+    cache the bars phase transparently. v0.3.0+ pattern."""
     payload = {
         "bars": bars,
         "indicators": indicators or {},
@@ -293,3 +287,29 @@ async def rates_with_ta(
         "ta": ta.get("ta") if isinstance(ta, dict) else ta,
         "asOf": datetime.now(UTC).isoformat(),
     }
+
+
+async def rates_with_ta(
+    contract,
+    *,
+    duration: str,
+    bar_size: str | None,
+    end_datetime: str | None,
+    what_to_show: str | None,
+    use_rth: bool,
+    indicators: dict,
+    recent_bars: int | None = None,
+) -> dict:
+    """Legacy combined API — fetches bars then enriches. v0.3.0 impl.py
+    no longer calls this; it composes `cache_bars.get_or_fetch` + the
+    standalone `ta_enrich` instead so /rates/ta hits the bars cache.
+    Kept for back-compat with any direct callers."""
+    bars = await historical_bars(
+        contract,
+        duration=duration,
+        bar_size=bar_size,
+        end_datetime=end_datetime,
+        what_to_show=what_to_show,
+        use_rth=use_rth,
+    )
+    return ta_enrich(contract, bars, indicators=indicators, recent_bars=recent_bars)

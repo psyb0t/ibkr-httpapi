@@ -14,7 +14,6 @@ from ...types import Response
 def _get_kwargs(
     order_id: int,
 ) -> dict[str, Any]:
-
     _kwargs: dict[str, Any] = {
         "method": "delete",
         "url": "/orders/{order_id}".format(
@@ -37,6 +36,11 @@ def _parse_response(
         response_404 = ErrorEnvelope.from_dict(response.json())
 
         return response_404
+
+    if response.status_code == 429:
+        response_429 = ErrorEnvelope.from_dict(response.json())
+
+        return response_429
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)

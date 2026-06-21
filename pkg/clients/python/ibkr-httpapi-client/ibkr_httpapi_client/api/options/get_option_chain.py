@@ -17,8 +17,8 @@ def _get_kwargs(
     underlying_sec_type: str | Unset = "STK",
     fut_fop_exchange: str | Unset = "",
     underlying_con_id: int | None | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> dict[str, Any]:
-
     params: dict[str, Any] = {}
 
     params["underlyingSecType"] = underlying_sec_type
@@ -31,6 +31,8 @@ def _get_kwargs(
     else:
         json_underlying_con_id = underlying_con_id
     params["underlyingConId"] = json_underlying_con_id
+
+    params["refresh"] = refresh
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -58,6 +60,11 @@ def _parse_response(
 
         return response_404
 
+    if response.status_code == 429:
+        response_429 = ErrorEnvelope.from_dict(response.json())
+
+        return response_429
+
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
     else:
@@ -82,6 +89,7 @@ def sync_detailed(
     underlying_sec_type: str | Unset = "STK",
     fut_fop_exchange: str | Unset = "",
     underlying_con_id: int | None | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> Response[ErrorEnvelope | OptionChain]:
     """Full option chain (every expiry × strike per exchange).
 
@@ -90,6 +98,7 @@ def sync_detailed(
         underlying_sec_type (str | Unset):  Default: 'STK'.
         fut_fop_exchange (str | Unset):  Default: ''.
         underlying_con_id (int | None | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -104,6 +113,7 @@ def sync_detailed(
         underlying_sec_type=underlying_sec_type,
         fut_fop_exchange=fut_fop_exchange,
         underlying_con_id=underlying_con_id,
+        refresh=refresh,
     )
 
     response = client.get_httpx_client().request(
@@ -120,6 +130,7 @@ def sync(
     underlying_sec_type: str | Unset = "STK",
     fut_fop_exchange: str | Unset = "",
     underlying_con_id: int | None | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> ErrorEnvelope | OptionChain | None:
     """Full option chain (every expiry × strike per exchange).
 
@@ -128,6 +139,7 @@ def sync(
         underlying_sec_type (str | Unset):  Default: 'STK'.
         fut_fop_exchange (str | Unset):  Default: ''.
         underlying_con_id (int | None | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -143,6 +155,7 @@ def sync(
         underlying_sec_type=underlying_sec_type,
         fut_fop_exchange=fut_fop_exchange,
         underlying_con_id=underlying_con_id,
+        refresh=refresh,
     ).parsed
 
 
@@ -153,6 +166,7 @@ async def asyncio_detailed(
     underlying_sec_type: str | Unset = "STK",
     fut_fop_exchange: str | Unset = "",
     underlying_con_id: int | None | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> Response[ErrorEnvelope | OptionChain]:
     """Full option chain (every expiry × strike per exchange).
 
@@ -161,6 +175,7 @@ async def asyncio_detailed(
         underlying_sec_type (str | Unset):  Default: 'STK'.
         fut_fop_exchange (str | Unset):  Default: ''.
         underlying_con_id (int | None | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -175,6 +190,7 @@ async def asyncio_detailed(
         underlying_sec_type=underlying_sec_type,
         fut_fop_exchange=fut_fop_exchange,
         underlying_con_id=underlying_con_id,
+        refresh=refresh,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -189,6 +205,7 @@ async def asyncio(
     underlying_sec_type: str | Unset = "STK",
     fut_fop_exchange: str | Unset = "",
     underlying_con_id: int | None | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> ErrorEnvelope | OptionChain | None:
     """Full option chain (every expiry × strike per exchange).
 
@@ -197,6 +214,7 @@ async def asyncio(
         underlying_sec_type (str | Unset):  Default: 'STK'.
         fut_fop_exchange (str | Unset):  Default: ''.
         underlying_con_id (int | None | Unset):
+        refresh (bool | Unset):  Default: False.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -213,5 +231,6 @@ async def asyncio(
             underlying_sec_type=underlying_sec_type,
             fut_fop_exchange=fut_fop_exchange,
             underlying_con_id=underlying_con_id,
+            refresh=refresh,
         )
     ).parsed

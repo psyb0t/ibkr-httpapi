@@ -253,6 +253,21 @@ Mount `./data:/app/data` (compose does this by default). Back up that
 directory — it IS the goldmine. Configure or disable per-feature via
 `config/config.yaml`.
 
+**Refresh & rate-limit shape (v0.3.0):**
+
+- `?refresh=true` on any cacheable endpoint (`/rates`, `/ticks`, `/rates/ta`,
+  `/<class>/{symbol}`, `/options/{...}/chain`, `/futures/{...}/continuous`,
+  `/futures/{...}/contracts`, `/history/executions`, `/history/completed_orders`)
+  bypasses the cache read and forces a fresh upstream fetch. The result is
+  still written back to disk — the goldmine grows either way.
+- HTTP `429 RATE_LIMIT_NEAR` envelope returned (and documented in `/openapi.json`)
+  on every IBKR-bound endpoint when the preemptive pacing gate fires. Body is
+  the standard `{code, message, details: {rule, used, limit, window_sec,
+  retry_after_sec, tier}}` shape. Back off, retry — IBKR access stays intact.
+- `/rates/ta` reads from the same bars cache as `/rates` and only re-runs the
+  wickworks TA pass on the cached bars. Cache hits = zero IBKR load + still
+  fresh indicator values.
+
 **Licensing caveat:** IBKR's market data terms restrict redistribution.
 Internal backtesting / model training / forensics on the cache is fine
 (and explicitly allowed). Selling raw OHLC from the cache likely

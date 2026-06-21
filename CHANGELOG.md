@@ -4,6 +4,70 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## v0.3.0 — 2026-06-20
+
+Closes the three deferred items from v0.2.0: `?refresh=true` query
+param, `429 RATE_LIMIT_NEAR` documented in the OpenAPI spec, and
+`/rates/ta` endpoints now hit the bars cache.
+
+### Spec — v1.yaml additions (24 ops gain refresh, 36 gain 429)
+
+- **New parameter** `RefreshQuery` (boolean, default false) — added to
+  every cacheable endpoint. Setting `?refresh=true` bypasses the disk
+  cache on read; the freshly-fetched value is still written back so
+  subsequent requests benefit.
+- **New response** `RateLimitNear` (429) — documented on every
+  IBKR-bound endpoint (24 cacheable + 6 `/tick` + 6 order/exercise/
+  cancel ops). Body uses the standard `ErrorEnvelope` with code
+  `RATE_LIMIT_NEAR` + details `{rule, used, limit, window_sec,
+  retry_after_sec, tier}`.
+- `scripts/patch_spec_v030.py` — idempotent script that applies these
+  refs across the spec by `operationId`. Run once; `make generate`
+  picks up the rest.
+
+### Impl — refresh plumbed through every cacheable path
+
+- `_cached_bars`, `_cached_details`, `_paced_rates_ta` helpers accept
+  `refresh: bool = False` kwarg and pass to the underlying cache call.
+- 22 cacheable impl functions updated to accept the generated `refresh`
+  arg and thread it through. `/stocks/ticks`, `/history/executions`,
+  `/history/completed_orders` accept the arg too (no-op for now since
+  those endpoints don't read a cache — the param is reserved for
+  future ticks/exec cache reads).
+- Generated FastAPI routers, Go client, Python client all regenerated.
+
+### `/rates/ta` now hits the bars cache (deferred from v0.2.0)
+
+- `marketdata.rates_with_ta` refactored into two phases:
+  - `rates_with_ta` (legacy combined call — kept for back-compat) still
+    does fetch + enrich in one step.
+  - **`marketdata.ta_enrich(contract, bars, *, indicators, recent_bars)`**
+    — new pure-enrichment helper that takes pre-fetched bars.
+- `impl._paced_rates_ta` now composes `_cached_bars` + `ta_enrich`, so
+  every `/rates/ta` request:
+  - hits the same per-(class, symbol, timeframe) CSV cache `/rates`
+    does (growing the goldmine on TA requests too);
+  - applies pacing once per call (historical tier), accounting for
+    both phases under one budget;
+  - returns the same wickworks-enriched payload.
+
+### Tests / quality gates
+
+- **142 tests pass**, ruff + bandit + `make audit` + `make audit-compose` all clean.
+- No new test files needed — the new behavior composes existing
+  primitives (cache_bars + cache_meta + ta_enrich) each of which is
+  unit-tested.
+
+### Files
+
+- `api/v1.yaml` — RefreshQuery + RateLimitNear components, refs on 24 + 36 ops
+- `ibkrapi/api/_generated/{models,routers}/*` — regenerated
+- `pkg/clients/{go,python}/*` — regenerated
+- `ibkrapi/api/impl.py` — refresh plumbing, ta_enrich composition
+- `ibkrapi/marketdata.py` — split out `ta_enrich`
+- `pyproject.toml` + `ibkrapi/server.py` — version 0.3.0
+- `scripts/patch_spec_v030.py` — one-shot spec patch helper
+
 ## v0.2.0 — 2026-06-20
 
 Preemptive IBKR pacing + transparent disk caching for every endpoint

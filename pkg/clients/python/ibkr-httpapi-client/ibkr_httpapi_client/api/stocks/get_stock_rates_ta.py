@@ -19,6 +19,7 @@ def _get_kwargs(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> dict[str, Any]:
     headers: dict[str, Any] = {}
 
@@ -45,6 +46,8 @@ def _get_kwargs(
         json_primary_exchange = primary_exchange
     params["primaryExchange"] = json_primary_exchange
 
+    params["refresh"] = refresh
+
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
     _kwargs: dict[str, Any] = {
@@ -70,6 +73,11 @@ def _parse_response(
         response_200 = RatesTAResponse.from_dict(response.json())
 
         return response_200
+
+    if response.status_code == 429:
+        response_429 = ErrorEnvelope.from_dict(response.json())
+
+        return response_429
 
     if response.status_code == 503:
         response_503 = ErrorEnvelope.from_dict(response.json())
@@ -101,6 +109,7 @@ def sync_detailed(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> Response[ErrorEnvelope | RatesTAResponse]:
     """Bars + wickworks TA enrichment.
 
@@ -109,6 +118,7 @@ def sync_detailed(
         exchange (None | str | Unset):
         currency (None | str | Unset):
         primary_exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
         body (RatesTARequest):
 
     Raises:
@@ -125,6 +135,7 @@ def sync_detailed(
         exchange=exchange,
         currency=currency,
         primary_exchange=primary_exchange,
+        refresh=refresh,
     )
 
     response = client.get_httpx_client().request(
@@ -142,6 +153,7 @@ def sync(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> ErrorEnvelope | RatesTAResponse | None:
     """Bars + wickworks TA enrichment.
 
@@ -150,6 +162,7 @@ def sync(
         exchange (None | str | Unset):
         currency (None | str | Unset):
         primary_exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
         body (RatesTARequest):
 
     Raises:
@@ -167,6 +180,7 @@ def sync(
         exchange=exchange,
         currency=currency,
         primary_exchange=primary_exchange,
+        refresh=refresh,
     ).parsed
 
 
@@ -178,6 +192,7 @@ async def asyncio_detailed(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> Response[ErrorEnvelope | RatesTAResponse]:
     """Bars + wickworks TA enrichment.
 
@@ -186,6 +201,7 @@ async def asyncio_detailed(
         exchange (None | str | Unset):
         currency (None | str | Unset):
         primary_exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
         body (RatesTARequest):
 
     Raises:
@@ -202,6 +218,7 @@ async def asyncio_detailed(
         exchange=exchange,
         currency=currency,
         primary_exchange=primary_exchange,
+        refresh=refresh,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -217,6 +234,7 @@ async def asyncio(
     exchange: None | str | Unset = UNSET,
     currency: None | str | Unset = UNSET,
     primary_exchange: None | str | Unset = UNSET,
+    refresh: bool | Unset = False,
 ) -> ErrorEnvelope | RatesTAResponse | None:
     """Bars + wickworks TA enrichment.
 
@@ -225,6 +243,7 @@ async def asyncio(
         exchange (None | str | Unset):
         currency (None | str | Unset):
         primary_exchange (None | str | Unset):
+        refresh (bool | Unset):  Default: False.
         body (RatesTARequest):
 
     Raises:
@@ -243,5 +262,6 @@ async def asyncio(
             exchange=exchange,
             currency=currency,
             primary_exchange=primary_exchange,
+            refresh=refresh,
         )
     ).parsed
