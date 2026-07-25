@@ -4,6 +4,11 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## v0.3.3 — 2026-07-25
+
+CI: publish the skill via `clawhub-publish.yml` directly — the
+`clawhub-skills-publish-workflow.yml` shim was removed upstream. No code or API change.
+
 ## v0.3.0 — 2026-06-20
 
 Closes the three deferred items from v0.2.0: `?refresh=true` query
