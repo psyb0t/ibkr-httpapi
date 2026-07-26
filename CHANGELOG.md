@@ -4,6 +4,17 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## v0.3.4 — 2026-07-26
+
+Security-documentation hardening for the `ibkr-httpapi` skill: no behavior
+change, only warnings and agent guardrails. Adds a `## Security & safety`
+section covering the destructive/irreversible nature of order placement,
+cancellation, and exercise; the unauthenticated-when-`API_TOKEN`-unset
+posture; and the outbound data flow to `IBKR_HTTPAPI_URL`. Strengthens the
+existing order-placement confirmation rule to require echoing back
+symbol/side/quantity/price before every order and to explicitly forbid
+auto-retrying a rejected order.
+
 ## v0.3.3 — 2026-07-25
 
 CI: publish the skill via `clawhub-publish.yml` directly — the

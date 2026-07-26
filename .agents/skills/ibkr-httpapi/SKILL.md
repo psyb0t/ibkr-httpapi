@@ -23,6 +23,35 @@ This skill talks to a **running** ibkr-httpapi server. It does not stand one
 up, does not provision IBKR credentials, and does not place trades on its own
 initiative.
 
+## Security & safety
+
+**Destructive & irreversible.** `POST /orders` places a REAL order on a real
+IBKR brokerage account — it moves real money and creates live market
+activity with no undo. `DELETE /orders/{orderId}` and `DELETE /orders`
+cancel real orders; `POST /options/exercise` exercises/lapses real option
+contracts. An agent must NEVER call any of these unless the user explicitly
+requested that exact action with the specific parameters (symbol, side,
+quantity, price) — never infer, extrapolate, or "helpfully" place a related
+order. Echo back the resolved symbol/side (`action`)/quantity/price (and
+order type) and get explicit user confirmation for that specific order
+before sending it. Never auto-retry a rejected or failed order — a rejection
+is a stop, not a retry trigger; surface the rejection reason and wait for a
+new, explicit instruction. On `DELETE /orders` (global cancel), never
+enumerate-then-bulk-cancel without showing the full list and getting the
+user's explicit go-ahead for the whole batch first.
+
+**No auth when `API_TOKEN` (`config.yaml:api_token`) is unset.** With it
+empty the HTTP API is UNAUTHENTICATED — anyone who can reach the socket
+gets full read + order-placement/cancellation access to the account. NEVER
+expose such an instance on a network or to untrusted agents; set the token
+and keep the deployment bound to loopback / behind an authenticating proxy.
+
+**External transmission.** Every request goes to whatever `IBKR_HTTPAPI_URL`
+points at — market data, account state, and order instructions leave your
+host for that endpoint. Point it only at an ibkr-httpapi instance you run or
+explicitly trust; prefer an HTTPS/tunneled path over plain HTTP if it isn't
+loopback.
+
 ## Live Trading Safety — read first
 
 This API moves real money on a user-owned brokerage account. Order placement,
@@ -39,7 +68,11 @@ account-mutating endpoint as a live wire.
    limit/aux price, expiry/strike/right for derivatives, resolved `account`,
    and the `IBKR_HTTPAPI_URL` base — and wait for an explicit confirmation
    from the user **for that specific action**. A prior "yes" does not
-   authorize the next one.
+   authorize the next one. Never place, modify, or cancel an order unless
+   the user explicitly asked for that specific action with the specific
+   parameters — do not infer intent or act on a vague/general instruction.
+   Never auto-retry a rejected order; surface the rejection and wait for a
+   fresh, explicit instruction from the user.
 2. **Paper vs live.** Confirm which account you're touching before any order
    call. IBKR paper accounts start `DU...`; live accounts start `U...`. Run
    `GET /accounts` and surface the account number; if it looks live, say so
@@ -375,7 +408,14 @@ curl -s -X POST -H "Authorization: Bearer $API_TOKEN" \
 > `account`, asset class, symbol, `action`, `quantity`, `orderType`, prices,
 > and expiry/strike/right for derivatives); (2) ask the user to confirm that
 > specific action; (3) wait for an explicit yes. A prior confirmation does not
-> carry over.
+> carry over. **Never place, modify, or cancel an order unless the user
+> explicitly requested that specific action with the specific
+> symbol/side/quantity/price** — do not act on a vague instruction, and never
+> place a "similar" or "adjusted" order the user didn't ask for. **Never
+> auto-retry a rejected order** — a `4xx`/`5xx` or a `Trade` whose
+> `orderStatus.status` shows a rejection is a stop; report the rejection
+> reason to the user and wait for a fresh, explicit instruction before
+> submitting anything again, even with the same parameters.
 
 ### `GET /orders` and `GET /orders/{orderId}` (read-only)
 
@@ -405,22 +445,31 @@ Place an order on any asset class. Body (`OrderRequest`):
 | `account` | no | server default | target account |
 | `goodAfterTime` / `goodTillDate` / `ocaGroup` / `parentId` | no | — | advanced routing |
 
-Returns a `Trade` snapshot (check `orderStatus.status`). Example (place ONLY
-after explicit per-action confirmation):
+Returns a `Trade` snapshot (check `orderStatus.status`). This places a REAL
+order and moves real money — only call it for a symbol/side/quantity/price
+the user explicitly asked for. Example (place ONLY after explicit
+per-action confirmation):
 
 ```bash
+# STOP: echo back "BUY 10 AAPL @ MKT" (or the LMT/STP price) to the user and
+# get an explicit yes for THIS order before running the curl below.
 curl -s -X POST -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   "$IBKR_HTTPAPI_URL/orders" \
   -d '{"assetClass":"stock","symbol":"AAPL","action":"BUY","quantity":10,"orderType":"MKT"}'
 
-# Futures limit order
+# Futures limit order — same rule: echo symbol/side/qty/price, confirm, then send.
 curl -s -X POST -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   "$IBKR_HTTPAPI_URL/orders" \
   -d '{"assetClass":"future","symbol":"ES","expiry":"202609","exchange":"CME",
        "action":"BUY","quantity":1,"orderType":"LMT","lmtPrice":5500.00}'
 ```
+
+If the response shows a rejection (non-2xx, or `orderStatus.status`
+indicating rejection/error), **do not resubmit**. Report the rejection to
+the user and wait for a new explicit instruction — even a retry of the
+identical order requires fresh confirmation.
 
 ### `DELETE /orders/{orderId}` — cancel one
 
