@@ -172,13 +172,15 @@ curl -X POST -H "Content-Type: application/json" .../options/exercise -d '{
 
 ## MCP interface
 
-The same API is also reachable over the [Model Context Protocol](https://modelcontextprotocol.io) at `/mcp` (streamable-HTTP), mounted on the same FastAPI app, in the same process — so an agent can drive it over JSON-RPC without a REST client. It exposes the whole REST surface as three generic tools rather than one per route:
+The same API is also reachable over the [Model Context Protocol](https://modelcontextprotocol.io) at `/mcp` (streamable-HTTP), mounted on the same FastAPI app, in the same process — so an agent can drive it over JSON-RPC without a REST client. It exposes **dedicated, typed tools** grouped by family; the asset-class repetition collapses behind an `asset_class` enum instead of one tool per class:
 
-| Tool | Args | Returns |
-|---|---|---|
-| `ping` | — | gateway liveness (`GET /v1/ping`) |
-| `endpoints` | — | the live OpenAPI catalog — every route's method, path, and summary |
-| `request` | `method`, `path`, `query`, `body` | call any REST endpoint and get its JSON response back |
+- **Market data** (`asset_class`: stock/option/future/cfd/forex/crypto) — `get_contract`, `get_quote`, `get_rates`, `get_rates_ta`, `get_stock_ticks`
+- **Asset specials** — `get_option_chain`, `place_option_combo`, `exercise_option`, `get_future_continuous`, `list_future_contracts`
+- **Orders** — `list_orders`, `get_order`, `place_order(asset_class, symbol, action, quantity, …)`, `cancel_order`, `cancel_all_orders`
+- **Account / positions / history** — `get_account`, `get_account_values`, `list_accounts`, `list_positions`, `get_executions`, `get_completed_orders`, `ping`
+- **Escape hatch** — `request(method, path, query, body)` + `endpoints` (OpenAPI catalog) for anything without a dedicated tool
+
+Every tool runs the same routers/validation/auth as a real HTTP request. The order/exercise tools are irreversible live-account actions and say so in their descriptions.
 
 Auth is the **same bearer token** as REST — `Authorization: Bearer <api_token>` — enforced by the same middleware, so an empty `api_token` means the MCP endpoint is open too. Reach it at `http://localhost:8889/mcp` (nginx front, same port as REST) — note this is the **app root**, not the `/v1` REST prefix.
 

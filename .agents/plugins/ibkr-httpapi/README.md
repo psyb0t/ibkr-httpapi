@@ -19,16 +19,17 @@ ibkr-httpapi instance and adds a bearer token when your endpoint requires one.
 
 ## Tools
 
-The ibkr-httpapi MCP tools become available to your agent. Rather than
-mirroring every asset-class endpoint one-by-one, the server exposes its whole
-REST surface through three generic tools:
-
-- **`ping`** — gateway liveness (mirrors `GET /v1/ping`).
-- **`endpoints`** — the live OpenAPI catalog (method + path + summary) for
-  every REST route, so the agent can discover routes instead of guessing.
-- **`request`** — call any REST endpoint by `method`, `path`, `query`, `body`;
-  the single generic IO interface over the full API (market data, account,
-  positions, orders, across stocks/options/futures/forex/crypto/CFD).
+The ibkr-httpapi MCP tools become available to your agent — **dedicated typed
+tools** grouped by family, with the 6 asset classes collapsed behind an
+`asset_class` enum: market data (`get_contract`, `get_quote`, `get_rates`,
+`get_rates_ta`, `get_stock_ticks`), specials (`get_option_chain`,
+`place_option_combo`, `exercise_option`, `get_future_continuous`,
+`list_future_contracts`), orders (`list_orders`, `get_order`, `place_order`,
+`cancel_order`, `cancel_all_orders`), and account/positions/history
+(`get_account`, `get_account_values`, `list_accounts`, `list_positions`,
+`get_executions`, `get_completed_orders`, `ping`). A generic `request` +
+`endpoints` catalog cover anything without a dedicated tool. The order /
+exercise tools are irreversible actions on a live brokerage account.
 
 ## Configuration
 

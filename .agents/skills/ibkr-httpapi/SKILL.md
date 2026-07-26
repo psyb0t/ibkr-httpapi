@@ -115,14 +115,20 @@ For installation, configuration, and container setup, see
 ## MCP interface
 
 The server also speaks [MCP](https://modelcontextprotocol.io) (streamable-HTTP)
-at `/mcp`, mirroring the whole REST surface via three tools instead of one
-per route: `ping` (gateway liveness), `endpoints` (the live OpenAPI catalog of
-every route), and `request` (call any REST endpoint by method/path/query/body).
-Same bearer auth as REST — see [Bearer / Token Auth](#bearer--token-auth), and
-the same order-placement/cancellation/exercise calls through `request` are just
-as irreversible as calling them over REST directly. Connect either straight at
-`$IBKR_HTTPAPI_URL/mcp` (note: the app root, not the `/v1` REST prefix) or via
-the [`@psyb0t/ibkr-httpapi`](https://github.com/psyb0t/ibkr-httpapi/tree/main/.agents/plugins/ibkr-httpapi)
+at `/mcp`, exposing the REST surface as **dedicated typed tools** whose names +
+params + descriptions are the agent's documentation. The 6 asset classes
+collapse behind an `asset_class` enum: market data (`get_contract`, `get_quote`,
+`get_rates`, `get_rates_ta`, `get_stock_ticks`), specials (`get_option_chain`,
+`place_option_combo`, `exercise_option`, `get_future_continuous`,
+`list_future_contracts`), orders (`list_orders`, `get_order`, `place_order`,
+`cancel_order`, `cancel_all_orders`), and account/positions/history
+(`get_account`, `get_account_values`, `list_accounts`, `list_positions`,
+`get_executions`, `get_completed_orders`, `ping`). A generic `request` +
+`endpoints` catalog remain as a fallback. Same bearer auth as REST — see
+[Bearer / Token Auth](#bearer--token-auth); the order-placement / cancellation /
+exercise tools are irreversible live-account actions. Connect straight at
+`$IBKR_HTTPAPI_URL/mcp` (the app root, not the `/v1` REST prefix) or via the
+[`@psyb0t/ibkr-httpapi`](https://github.com/psyb0t/ibkr-httpapi/tree/main/.agents/plugins/ibkr-httpapi)
 OpenClaw plugin for stdio-only MCP clients.
 
 ## When To Use

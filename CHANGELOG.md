@@ -4,6 +4,13 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## v0.5.0 — 2026-07-26
+
+MCP interface reworked from a generic passthrough to dedicated, typed tools.
+
+- **`/mcp` now exposes ~24 dedicated typed tools** grouped by family, with the 6 asset classes collapsed behind an `asset_class` enum: `get_contract` / `get_quote` / `get_rates` / `get_rates_ta` replace 24 near-duplicate per-class routes, plus option/future specials (`get_option_chain`, `place_option_combo`, `exercise_option`, `get_future_continuous`, `list_future_contracts`), orders (`list_orders`, `get_order`, `place_order`, `cancel_order`, `cancel_all_orders`), account/positions (`get_account`, `get_account_values`, `list_accounts`, `list_positions`), and history/health. Each tool has typed params + a description the agent reads — the schema IS the documentation. Order/exercise tools carry an irreversible-live-account note. A generic `request` + `endpoints` catalog remain as a fallback. Every tool runs the same routers/validation/auth in-process. README + skill + plugin docs updated.
+- `mcp_server.py` now logs via the project's `ibkrapi.logger.log` (structured), matching the rest of the package.
+
 ## v0.4.0 — 2026-07-26
 
 New MCP interface — ibkr-httpapi is now also driveable over the Model Context Protocol.
