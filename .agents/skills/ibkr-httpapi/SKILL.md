@@ -112,6 +112,19 @@ those in the consumer. See [API — TA enrichment](#api--post-classsymbolratesta
 For installation, configuration, and container setup, see
 [references/setup.md](references/setup.md).
 
+## MCP interface
+
+The server also speaks [MCP](https://modelcontextprotocol.io) (streamable-HTTP)
+at `/mcp`, mirroring the whole REST surface via three tools instead of one
+per route: `ping` (gateway liveness), `endpoints` (the live OpenAPI catalog of
+every route), and `request` (call any REST endpoint by method/path/query/body).
+Same bearer auth as REST — see [Bearer / Token Auth](#bearer--token-auth), and
+the same order-placement/cancellation/exercise calls through `request` are just
+as irreversible as calling them over REST directly. Connect either straight at
+`$IBKR_HTTPAPI_URL/mcp` (note: the app root, not the `/v1` REST prefix) or via
+the [`@psyb0t/ibkr-httpapi`](https://github.com/psyb0t/ibkr-httpapi/tree/main/.agents/plugins/ibkr-httpapi)
+OpenClaw plugin for stdio-only MCP clients.
+
 ## When To Use
 
 - The user has deployed ibkr-httpapi and set `IBKR_HTTPAPI_URL`.

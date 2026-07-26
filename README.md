@@ -10,6 +10,7 @@ Unlike MT5 (Windows-only Python wheel → needs a Windows VM), IBKR's IB Gateway
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
 - [Endpoint catalog](#endpoint-catalog)
+- [MCP interface](#mcp-interface)
 - [Stack](#stack)
 - [Layout](#layout)
 - [Licensing notes](#licensing-notes)
@@ -168,6 +169,28 @@ curl -X POST -H "Content-Type: application/json" .../options/exercise -d '{
   "conid": 681000001, "action": "EXERCISE", "quantity": 1, "account": "DU1234567"
 }'
 ```
+
+## MCP interface
+
+The same API is also reachable over the [Model Context Protocol](https://modelcontextprotocol.io) at `/mcp` (streamable-HTTP), mounted on the same FastAPI app, in the same process — so an agent can drive it over JSON-RPC without a REST client. It exposes the whole REST surface as three generic tools rather than one per route:
+
+| Tool | Args | Returns |
+|---|---|---|
+| `ping` | — | gateway liveness (`GET /v1/ping`) |
+| `endpoints` | — | the live OpenAPI catalog — every route's method, path, and summary |
+| `request` | `method`, `path`, `query`, `body` | call any REST endpoint and get its JSON response back |
+
+Auth is the **same bearer token** as REST — `Authorization: Bearer <api_token>` — enforced by the same middleware, so an empty `api_token` means the MCP endpoint is open too. Reach it at `http://localhost:8889/mcp` (nginx front, same port as REST) — note this is the **app root**, not the `/v1` REST prefix.
+
+```bash
+curl -s "http://localhost:8889/mcp" \
+    -H "Authorization: Bearer $API_TOKEN" \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' \
+    -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"ping","arguments":{}}}'
+```
+
+For MCP clients that only speak local stdio servers, the [`@psyb0t/ibkr-httpapi`](.agents/plugins/ibkr-httpapi) OpenClaw plugin is a thin stdio↔HTTP bridge to this endpoint.
 
 ## Stack
 

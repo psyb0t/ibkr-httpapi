@@ -4,6 +4,14 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## v0.4.0 — 2026-07-26
+
+New MCP interface — ibkr-httpapi is now also driveable over the Model Context Protocol.
+
+- **MCP server mounted at `/mcp`** (streamable-HTTP), in the same FastAPI app as the REST API. Three tools mirror the whole REST surface: `ping` (gateway liveness), `endpoints` (the live OpenAPI route catalog), and `request(method, path, query, body)` — call any `/v1` endpoint, running the same handler + auth in-process. Same bearer auth as REST (empty `API_TOKEN` = off). See `ibkrapi/mcp_server.py`. New deps `mcp` + `httpx`, re-locked into `requirements.txt`.
+- **`@psyb0t/ibkr-httpapi` ClawHub plugin** (`.agents/plugins/ibkr-httpapi/`) — a stdio↔HTTP `mcp-remote` bridge. Set `IBKR_HTTPAPI_URL` (the server root — a trailing `/v1` is stripped) plus `IBKR_HTTPAPI_TOKEN` if auth is on. **Note:** `/mcp` lives at the app root, not under `/v1`. CI publishes it to ClawHub alongside the skill.
+- README and the `ibkr-httpapi` skill gain an **MCP interface** section. No REST endpoint change (additive).
+
 ## v0.3.4 — 2026-07-26
 
 Security-documentation hardening for the `ibkr-httpapi` skill: no behavior

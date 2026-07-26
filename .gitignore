@@ -62,3 +62,4 @@ fix.sh
 
 # Brutal-review audit logs
 .brutal_reviews/
+.telemetry/

@@ -9,8 +9,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ibkrapi import cache_bars, cache_meta, exec_history, historian, ibclient, pacing
+from ibkrapi.mcp_server import build_mcp_server
 from ibkrapi.api._generated.routers import (
     cfd,
     crypto,
@@ -84,6 +86,10 @@ def _configure_pacing_and_caches() -> None:
 
 _configure_pacing_and_caches()
 
+# MCP server, mounted at /mcp further down. Built here so the lifespan can drive
+# its streamable-HTTP session manager for the whole app lifetime.
+_MCP_SERVER = build_mcp_server()
+
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
@@ -96,11 +102,14 @@ async def _lifespan(app: FastAPI):
             event="startup",
             err=str(exc),
         )
-    try:
-        yield
-    finally:
-        log.info("shutdown", event="shutdown", action="disconnect_gateway")
-        await ibclient.shutdown()
+    # MCP's streamable-HTTP transport needs its session manager running for the
+    # whole app lifetime (mirrors the gateway connect/disconnect scope).
+    async with _MCP_SERVER.session_manager.run():
+        try:
+            yield
+        finally:
+            log.info("shutdown", event="shutdown", action="disconnect_gateway")
+            await ibclient.shutdown()
 
 
 app = FastAPI(
@@ -226,3 +235,32 @@ for router in (
     history,
 ):
     app.include_router(router.router, prefix=_API_V1_PREFIX)
+
+
+# --- MCP interface -----------------------------------------------------------
+# The same REST surface exposed over the Model Context Protocol at /mcp, so an
+# agent can drive IBKR over JSON-RPC / streamable-HTTP. streamable_http_path="/"
+# (set in build_mcp_server) keeps the /mcp mount from double-prefixing.
+
+
+class _McpTrailingSlashMiddleware:
+    """Rewrite bare ``/mcp`` -> ``/mcp/`` before routing.
+
+    Starlette's ``Mount("/mcp", ...)`` serves at ``/mcp/*`` but 307-redirects the
+    bare ``/mcp`` form; some MCP clients don't follow that redirect on a POST, so
+    normalise the path here and hand the mounted app the slashed form directly.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self._app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope.get("type") == "http" and scope.get("path") == "/mcp":
+            scope = dict(scope)
+            scope["path"] = "/mcp/"
+            scope["raw_path"] = b"/mcp/"
+        await self._app(scope, receive, send)
+
+
+app.add_middleware(_McpTrailingSlashMiddleware)
+app.mount("/mcp", _MCP_SERVER.streamable_http_app())

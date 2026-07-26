@@ -1,0 +1,56 @@
+{
+  "name": "@psyb0t/ibkr-httpapi",
+  "version": "0.0.0",
+  "mcpName": "io.github.psyb0t/ibkr-httpapi",
+  "description": "Connect an OpenClaw/MCP agent to a self-hosted ibkr-httpapi (Interactive Brokers HTTP bridge) instance over MCP.",
+  "type": "module",
+  "bin": {
+    "ibkr-httpapi-mcp": "bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "openclaw.plugin.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "author": "psyb0t",
+  "homepage": "https://github.com/psyb0t/ibkr-httpapi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/psyb0t/ibkr-httpapi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/psyb0t/ibkr-httpapi/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ibkr-httpapi",
+    "ibkr",
+    "interactive-brokers",
+    "ib-gateway",
+    "trading",
+    "brokerage",
+    "openclaw",
+    "ai-agent"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "mcp-remote": "0.1.38"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "openclaw": {
+    "extensions": ["./bin/cli.js"],
+    "compat": {
+      "pluginApi": ">=2026.3.24-beta.2"
+    },
+    "build": {
+      "openclawVersion": "2026.3.24-beta.2"
+    }
+  }
+}

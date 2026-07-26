@@ -9,3 +9,8 @@ uvicorn[standard]==0.49.0
 pydantic==2.13.4
 PyYAML==6.0.3
 ib_async==2.1.0
+# MCP interface mounted at /mcp (ibkrapi/mcp_server.py). httpx is NOT declared
+# here (per the "no httpx as a direct dep" stack rule) — it comes transitively
+# as a hard dependency of mcp, and mcp_server.py uses it ONLY for its in-process
+# ASGI transport (no network hop, no stdlib equivalent).
+mcp==1.27.1
