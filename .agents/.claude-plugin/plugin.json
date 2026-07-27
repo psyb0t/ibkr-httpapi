@@ -1,0 +1,22 @@
+{
+  "name": "ibkr-httpapi",
+  "description": "HTTP+JSON bridge to Interactive Brokers via ib_async and a local IB Gateway container — market data, option chains with Greeks, account/positions, order entry, and server-side technical analysis over REST and MCP.",
+  "author": { "name": "psyb0t", "url": "https://github.com/psyb0t" },
+  "homepage": "https://github.com/psyb0t/ibkr-httpapi",
+  "license": "WTFPL",
+  "keywords": ["ibkr", "interactive-brokers", "trading", "market-data", "options", "futures", "rest-api", "mcp"],
+  "userConfig": {
+    "api_url": {
+      "type": "string",
+      "title": "ibkr-httpapi URL",
+      "description": "Base URL of your running ibkr-httpapi server, including the /v1 REST prefix, e.g. http://localhost:8889/v1. Sets IBKR_HTTPAPI_URL.",
+      "required": true
+    },
+    "api_token": {
+      "type": "string",
+      "title": "API token",
+      "description": "Bearer token sent as Authorization: Bearer <token>. Only needed if the server was started with api_token / API_TOKEN configured. Sets API_TOKEN.",
+      "sensitive": true
+    }
+  }
+}

@@ -15,6 +15,7 @@ Unlike MT5 (Windows-only Python wheel → needs a Windows VM), IBKR's IB Gateway
 - [Configuration](#configuration)
 - [Endpoint catalog](#endpoint-catalog)
 - [MCP interface](#mcp-interface)
+- [Agent integrations](#agent-integrations)
 - [Stack](#stack)
 - [Layout](#layout)
 - [Licensing notes](#licensing-notes)
@@ -197,6 +198,48 @@ curl -s "http://localhost:8889/mcp" \
 ```
 
 For MCP clients that only speak local stdio servers, the [`@psyb0t/ibkr-httpapi`](.agents/plugins/ibkr-httpapi) OpenClaw plugin is a thin stdio↔HTTP bridge to this endpoint.
+
+## Agent integrations
+
+The [skill](.agents/skills/ibkr-httpapi) works in any agent that reads `.agents/skills/`, and
+installs natively in the clients below.
+
+### Claude Code
+
+```bash
+claude plugin marketplace add psyb0t/agents
+claude plugin install ibkr-httpapi@psyb0t
+```
+
+Claude Code prompts for the ibkr-httpapi URL (`IBKR_HTTPAPI_URL`) and, if auth is enabled, the
+API token (`API_TOKEN`) — the token is stored in your OS keychain.
+
+### Codex
+
+```bash
+codex plugin marketplace add psyb0t/agents
+```
+
+Codex also picks the skill up automatically in any repo containing `.agents/skills/`, and
+invokes it as `$ibkr-httpapi`.
+
+### OpenClaw
+
+The skill is published to ClawHub on every release:
+
+```bash
+openclaw skills install @psyb0t/ibkr-httpapi
+```
+
+For MCP clients that speak local stdio, the [`@psyb0t/ibkr-httpapi`](.agents/plugins/ibkr-httpapi)
+plugin bridges to the service's `/mcp` endpoint:
+
+```bash
+openclaw plugins install clawhub:@psyb0t/ibkr-httpapi
+```
+
+Then set `IBKR_HTTPAPI_URL` (the server root, e.g. `http://localhost:8889`) and, if the server
+has `api_token`/`API_TOKEN` configured, `IBKR_HTTPAPI_TOKEN`.
 
 ## Stack
 

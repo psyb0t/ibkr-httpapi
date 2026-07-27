@@ -4,6 +4,15 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## v0.5.3 — 2026-07-27
+
+- Added `.agents/.claude-plugin/plugin.json` and `.agents/.codex-plugin/plugin.json` so the
+  existing `ibkr-httpapi` skill and OpenClaw MCP-bridge plugin install natively in Claude Code
+  and Codex from the central `psyb0t/agents` marketplace.
+- Added a top-level **Agent integrations** README section (with matching Table of Contents
+  entry) documenting the Claude Code, Codex, and OpenClaw install commands, including the
+  `@psyb0t/ibkr-httpapi` MCP-bridge plugin.
+
 ## v0.5.2 — 2026-07-27
 
 - Added a GitHub Actions CI status badge to the README.
