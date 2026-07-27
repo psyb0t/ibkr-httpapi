@@ -4,6 +4,10 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## v0.5.1 — 2026-07-27
+
+- Added self-hosted version and license badges; wired a badges job into pipeline.yml.
+
 ## v0.5.0 — 2026-07-26
 
 MCP interface reworked from a generic passthrough to dedicated, typed tools.

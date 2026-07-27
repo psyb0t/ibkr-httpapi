@@ -1,5 +1,8 @@
 # ibkr-httpapi
 
+[![version](https://raw.githubusercontent.com/psyb0t/ibkr-httpapi/badges/version.svg)](https://github.com/psyb0t/ibkr-httpapi/releases)
+[![license](https://raw.githubusercontent.com/psyb0t/ibkr-httpapi/badges/license.svg)](LICENSE)
+
 HTTP wrapper over Interactive Brokers via [ib_async](https://github.com/ib-api-reloaded/ib_async) and a local IB Gateway container. Same shape as [mt5-httpapi](https://github.com/psyb0t/mt5-httpapi) — talk to your brokerage with curl + JSON, get OHLC/ticks/account/positions/orders back, server-side TA via the wickworks sidecar.
 
 Unlike MT5 (Windows-only Python wheel → needs a Windows VM), IBKR's IB Gateway runs Linux-native, so the whole stack is just Linux containers. No KVM, no Windows ISO.
