@@ -4,6 +4,15 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## v0.5.4 — 2026-07-27
+
+- Fixed the **Agent integrations** README section: the Codex subsection was missing its
+  install command. It now reads `codex plugin add ibkr-httpapi@psyb0t` right after the
+  marketplace-add line, matching the Claude Code subsection above it.
+- Clarified that the skill's invocation form differs by install path: via the marketplace
+  it invokes as `$ibkr-httpapi:ibkr-httpapi`; picked up automatically from this repo's own
+  `.agents/skills/` (no install needed) it invokes as plain `$ibkr-httpapi`.
+
 ## v0.5.3 — 2026-07-27
 
 - Added `.agents/.claude-plugin/plugin.json` and `.agents/.codex-plugin/plugin.json` so the

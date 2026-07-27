@@ -218,10 +218,12 @@ API token (`API_TOKEN`) — the token is stored in your OS keychain.
 
 ```bash
 codex plugin marketplace add psyb0t/agents
+codex plugin add ibkr-httpapi@psyb0t
 ```
 
-Codex also picks the skill up automatically in any repo containing `.agents/skills/`, and
-invokes it as `$ibkr-httpapi`.
+Installed via the marketplace, the skill invokes as `$ibkr-httpapi:ibkr-httpapi`. Codex also
+picks the skill up automatically, with no install, in any repo containing `.agents/skills/` —
+there it invokes as plain `$ibkr-httpapi`.
 
 ### OpenClaw
 
