@@ -1,5 +1,6 @@
 # ibkr-httpapi
 
+[![CI](https://github.com/psyb0t/ibkr-httpapi/actions/workflows/pipeline.yml/badge.svg?branch=main)](https://github.com/psyb0t/ibkr-httpapi/actions/workflows/pipeline.yml)
 [![version](https://raw.githubusercontent.com/psyb0t/ibkr-httpapi/badges/version.svg)](https://github.com/psyb0t/ibkr-httpapi/releases)
 [![license](https://raw.githubusercontent.com/psyb0t/ibkr-httpapi/badges/license.svg)](LICENSE)
 
