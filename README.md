@@ -201,7 +201,7 @@ For MCP clients that only speak local stdio servers, the [`@psyb0t/ibkr-httpapi`
 
 ## Agent integrations
 
-The [skill](.agents/skills/ibkr-httpapi) works in any agent that reads `.agents/skills/`, and
+The [skill](.agents/skills/ibkr-httpapi) works in any agent that reads `.agents/skills/` (such as [peen](https://github.com/psyb0t/peen)), and
 installs natively in the clients below.
 
 ### Claude Code
