@@ -8,12 +8,6 @@ Typed Python client generated from `api/v1.yaml` via `openapi-python-client`.
 pip install "git+https://github.com/psyb0t/ibkr-httpapi.git#subdirectory=pkg/clients/python/ibkr-httpapi-client"
 ```
 
-Or with a specific ref:
-
-```bash
-pip install "git+https://github.com/psyb0t/ibkr-httpapi.git@v0.1.0#subdirectory=pkg/clients/python/ibkr-httpapi-client"
-```
-
 ## Use
 
 ```python
