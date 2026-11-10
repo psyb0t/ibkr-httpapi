@@ -9,4 +9,4 @@
   - INFO: startup config dump, gateway connect, cache writes, pacing setup, order submits, one `request_in` and one `request_out` line per HTTP request (with a `req_id` from `os.urandom(4).hex()`).
   - WARNING: connect retries, pacing soft and hard caps, cache and historian write failures, wickworks errors, global cancel.
   - ERROR: `request_crash` from the middleware with the traceback.
-- Never log `API_TOKEN` (the startup line logs only whether it is set and its length), the IBKR password (`TWS_PASSWORD`), or full request bodies, which can carry account numbers.
+- The startup line logs only whether `API_TOKEN` is set and its length. Full request bodies are not logged: they can carry account numbers.
