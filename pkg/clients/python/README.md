@@ -1,34 +1,11 @@
-# ibkr-httpapi — Python client
+# ibkr-httpapi Python client
 
-Typed Python client generated from `api/v1.yaml` via `openapi-python-client`.
-
-## Install (from this repo, via git path)
+Typed Python client for [ibkr-httpapi](https://github.com/psyb0t/ibkr-httpapi), generated from `api/v1.yaml` by openapi-python-client into `ibkr-httpapi-client/`.
 
 ```bash
 pip install "git+https://github.com/psyb0t/ibkr-httpapi.git#subdirectory=pkg/clients/python/ibkr-httpapi-client"
 ```
 
-## Use
+Usage, authentication and a full example: https://psyb0t.github.io/ibkr-httpapi/clients/
 
-```python
-import os
-from ibkr_httpapi_client import AuthenticatedClient
-from ibkr_httpapi_client.api.stocks import get_stock_tick
-
-client = AuthenticatedClient(
-    base_url="http://localhost:8889/v1",
-    token=os.environ["IBKR_API_TOKEN"],
-)
-ticker = get_stock_tick.sync(client=client, symbol="AAPL")
-print(f"AAPL last={ticker.last}")
-```
-
-## Regenerate
-
-In the project root (where `api/v1.yaml` lives):
-
-```bash
-make generate-client-python
-```
-
-Everything under `ibkr-httpapi-client/` is generated — never hand-edit. Edit the spec and rerun the make target.
+Everything under `ibkr-httpapi-client/` is generated. Never edit it; change the spec and run `make generate-client-python` in the repository root.

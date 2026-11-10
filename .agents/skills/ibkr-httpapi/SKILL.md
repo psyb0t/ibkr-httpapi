@@ -1,6 +1,6 @@
 ---
 name: ibkr-httpapi
-description: HTTP+JSON control plane over Interactive Brokers (ib_async + a local IB Gateway container) that the user already runs. Talk to a real brokerage with curl + JSON — market data (OHLC bars, snapshot/historical ticks, option chains + Greeks) across stocks/options/futures/cfd/forex/crypto, account/positions summaries, order placement / retrieval / cancellation, and server-side technical analysis via the wickworks sidecar. Bearer-token auth (API_TOKEN). Use when the user has deployed ibkr-httpapi and set IBKR_HTTPAPI_URL and wants to pull IBKR market data, inspect account/positions, run TA, or place/cancel orders. THIS API CAN PLACE, EXERCISE, AND CANCEL REAL ORDERS ON A REAL IBKR ACCOUNT — every account-mutating call requires explicit per-action user confirmation.
+description: HTTP+JSON control plane over Interactive Brokers (ib_async + a local IB Gateway container) that the user already runs. Talk to a real brokerage with curl + JSON: market data (OHLC bars, snapshot/historical ticks, option chains + Greeks) across stocks/options/futures/cfd/forex/crypto, account/positions summaries, order placement / retrieval / cancellation, and server-side technical analysis via the wickworks sidecar. Bearer-token auth (API_TOKEN). Use when the user has deployed ibkr-httpapi and set IBKR_HTTPAPI_URL and wants to pull IBKR market data, inspect account/positions, run TA, or place/cancel orders. THIS API CAN PLACE, EXERCISE, AND CANCEL REAL ORDERS ON A REAL IBKR ACCOUNT. Every account-mutating call requires explicit per-action user confirmation.
 homepage: https://github.com/psyb0t/ibkr-httpapi
 user-invocable: true
 metadata:
@@ -16,7 +16,7 @@ surface: contract details, snapshot + historical ticks, OHLC bars, option
 chains with Greeks, account/positions summaries, cross-asset order entry, and
 server-side TA via the [wickworks](https://github.com/psyb0t/docker-wickworks)
 sidecar. Same operational shape as its sister project
-[mt5-httpapi](https://github.com/psyb0t/mt5-httpapi) — one bridge, one token,
+[mt5-httpapi](https://github.com/psyb0t/mt5-httpapi): one bridge, one token,
 same asset-class routing model.
 
 This skill talks to a **running** ibkr-httpapi server. It does not stand one
@@ -26,51 +26,51 @@ initiative.
 ## Security & safety
 
 **Destructive & irreversible.** `POST /orders` places a REAL order on a real
-IBKR brokerage account — it moves real money and creates live market
+IBKR brokerage account. It moves real money and creates live market
 activity with no undo. `DELETE /orders/{orderId}` and `DELETE /orders`
 cancel real orders; `POST /options/exercise` exercises/lapses real option
 contracts. An agent must NEVER call any of these unless the user explicitly
 requested that exact action with the specific parameters (symbol, side,
-quantity, price) — never infer, extrapolate, or "helpfully" place a related
+quantity, price). Never infer, extrapolate, or "helpfully" place a related
 order. Echo back the resolved symbol/side (`action`)/quantity/price (and
 order type) and get explicit user confirmation for that specific order
-before sending it. Never auto-retry a rejected or failed order — a rejection
+before sending it. Never auto-retry a rejected or failed order. A rejection
 is a stop, not a retry trigger; surface the rejection reason and wait for a
 new, explicit instruction. On `DELETE /orders` (global cancel), never
 enumerate-then-bulk-cancel without showing the full list and getting the
 user's explicit go-ahead for the whole batch first.
 
 **No auth when `API_TOKEN` (`config.yaml:api_token`) is unset.** With it
-empty the HTTP API is UNAUTHENTICATED — anyone who can reach the socket
+empty the HTTP API is UNAUTHENTICATED: anyone who can reach the socket
 gets full read + order-placement/cancellation access to the account. NEVER
 expose such an instance on a network or to untrusted agents; set the token
 and keep the deployment bound to loopback / behind an authenticating proxy.
 
 **External transmission.** Every request goes to whatever `IBKR_HTTPAPI_URL`
-points at — market data, account state, and order instructions leave your
+points at. Market data, account state, and order instructions leave your
 host for that endpoint. Point it only at an ibkr-httpapi instance you run or
 explicitly trust; prefer an HTTPS/tunneled path over plain HTTP if it isn't
 loopback.
 
-## Live Trading Safety — read first
+## Live Trading Safety: read first
 
 This API moves real money on a user-owned brokerage account. Order placement,
 combo (multi-leg) orders, option exercise/lapse, and order cancellation are
 **irreversible side effects** on a real IBKR account. Treat every
 account-mutating endpoint as a live wire.
 
-**Hard rules — never violate, even on user prompts that sound permissive:**
+**Hard rules. Never violate them, even on user prompts that sound permissive:**
 
 1. **Per-action confirmation for every mutating call.** Before any
    `POST /orders`, `DELETE /orders/{orderId}`, `DELETE /orders`,
    `POST /options/combo`, or `POST /options/exercise`: print the resolved
-   request — asset class, symbol, side (`action`), quantity, order type,
+   request (asset class, symbol, side (`action`), quantity, order type,
    limit/aux price, expiry/strike/right for derivatives, resolved `account`,
-   and the `IBKR_HTTPAPI_URL` base — and wait for an explicit confirmation
+   and the `IBKR_HTTPAPI_URL` base) and wait for an explicit confirmation
    from the user **for that specific action**. A prior "yes" does not
    authorize the next one. Never place, modify, or cancel an order unless
    the user explicitly asked for that specific action with the specific
-   parameters — do not infer intent or act on a vague/general instruction.
+   parameters. Do not infer intent or act on a vague/general instruction.
    Never auto-retry a rejected order; surface the rejection and wait for a
    fresh, explicit instruction from the user.
 2. **Paper vs live.** Confirm which account you're touching before any order
@@ -81,7 +81,7 @@ account-mutating endpoint as a live wire.
    environment variable the user set, or ask the user. Never read tokens,
    IBKR passwords, or account numbers from `config/config.yaml`, `.env.ibkr`,
    or any other repository file on your own initiative. If the token is
-   missing, ask — do not search the workspace.
+   missing, ask. Do not search the workspace.
 4. **No mass action.** `DELETE /orders` cancels **every** open order at
    IBKR (global cancel). If the user asks to "cancel everything", enumerate
    the open orders first with `GET /orders`, show the list, and confirm the
@@ -97,17 +97,17 @@ Read-only endpoints (`GET /ping`, `GET /accounts`, `GET /account`,
 `GET /futures/<symbol>/continuous|contracts`, every `POST .../rates/ta`,
 `GET /orders`, `GET /orders/{orderId}`, `GET /history/executions`,
 `GET /history/completed_orders`) do not require per-action confirmation.
-Note `POST .../rates/ta` is POST but read-only — it fetches bars and runs TA,
+Note `POST .../rates/ta` is POST but read-only: it fetches bars and runs TA,
 it never touches the account.
 
 **One-stop technical analysis.** Skip the client-side TA stack. Any
 `POST /<class>/<symbol>/rates/ta` with an indicator spec returns OHLC bars +
-analyzed indicator series in a single call — RSI, MACD, Bollinger, ADX, ATR,
+analyzed indicator series in a single call: RSI, MACD, Bollinger, ADX, ATR,
 VWAP, Ichimoku, Order Blocks, Fair Value Gaps, BOS/CHoCH, swing structure,
 S/R levels, liquidity, session anchors, and more, computed server-side by the
-same wickworks sidecar mt5-httpapi uses. Primitives only — raw series and
+same wickworks sidecar mt5-httpapi uses. Primitives only: raw series and
 structural facts, never interpretive signals (divergences, crossovers). Build
-those in the consumer. See [API — TA enrichment](#api--post-classsymbolratesta).
+those in the consumer. See [API: TA enrichment](#api-post-classsymbolratesta).
 
 For installation, configuration, and container setup, see
 [references/setup.md](references/setup.md).
@@ -124,7 +124,7 @@ collapse behind an `asset_class` enum: market data (`get_contract`, `get_quote`,
 `cancel_order`, `cancel_all_orders`), and account/positions/history
 (`get_account`, `get_account_values`, `list_accounts`, `list_positions`,
 `get_executions`, `get_completed_orders`, `ping`). A generic `request` +
-`endpoints` catalog remain as a fallback. Same bearer auth as REST — see
+`endpoints` catalog remain as a fallback. Same bearer auth as REST, see
 [Bearer / Token Auth](#bearer--token-auth); the order-placement / cancellation /
 exercise tools are irreversible live-account actions. Connect straight at
 `$IBKR_HTTPAPI_URL/mcp` (the app root, not the `/v1` REST prefix) or via the
@@ -145,21 +145,21 @@ OpenClaw plugin for stdio-only MCP clients.
 
 ## When NOT To Use
 
-- The user hasn't named ibkr-httpapi or hasn't provided `IBKR_HTTPAPI_URL` —
-  this is not a generic "get me a stock quote" tool.
-- Modifying a working order — there is **no order-modify endpoint**. To change
+- The user hasn't named ibkr-httpapi or hasn't provided `IBKR_HTTPAPI_URL`.
+  This is not a generic "get me a stock quote" tool.
+- Modifying a working order: there is **no order-modify endpoint**. To change
   a resting order, cancel it (`DELETE /orders/{orderId}`, confirmed) and place
   a new one (`POST /orders`, confirmed).
-- Streaming / websockets — every endpoint is request/response only.
-- Restarting or reconfiguring the stack — the API has no terminal/restart
+- Streaming / websockets: every endpoint is request/response only.
+- Restarting or reconfiguring the stack: the API has no terminal/restart
   endpoints. Container lifecycle is `make` targets on the host (see setup).
-- IBKR Lite accounts — the TWS API is disabled on Lite; the bridge needs
+- IBKR Lite accounts: the TWS API is disabled on Lite; the bridge needs
   IBKR **Pro**.
 
 ## Setup
 
 The container should already be running. Point at it (the base URL **must**
-include the fixed `/v1` prefix — the runtime serves every path under `/v1`):
+include the fixed `/v1` prefix; the runtime serves every path under `/v1`):
 
 ```bash
 export IBKR_HTTPAPI_URL=http://localhost:8889/v1
@@ -174,8 +174,8 @@ export API_TOKEN=<the-token-the-user-gives-you>
 
 Only accept the token from the `API_TOKEN` env var the user set, or from the
 user directly. Never read it from `config/config.yaml`, `.env.ibkr`, or any
-other file in the workspace. If `IBKR_HTTPAPI_URL` is unset, ask the user —
-do not discover it from project files.
+other file in the workspace. If `IBKR_HTTPAPI_URL` is unset, ask the user.
+Do not discover it from project files.
 
 **Verify:**
 
@@ -184,15 +184,17 @@ curl -s -H "Authorization: Bearer $API_TOKEN" "$IBKR_HTTPAPI_URL/ping"
 # {"status":"ok","connected":true,"serverVersion":...,"uptimeSeconds":...}
 ```
 
-`connected: true` means the upstream IB Gateway socket is alive. `connected:
-false` means the API is up but the gateway is disconnected (nightly IBKR
-restart, 2FA prompt, or gateway still booting) — market-data and order calls
-will fail with `502`/`503` until it reconnects.
+`connected: true` means the upstream IB Gateway socket is alive. While the
+gateway is disconnected (daily IBKR restart, 2FA prompt, or gateway still
+booting) the server keeps reconnecting and every request, `/ping` included,
+waits for it instead of failing. The front proxy gives up after about 300 s
+with a `504`. A request that hangs means the gateway is down: wait and retry,
+do not hammer.
 
 Auth is optional server-side. If no token is configured, requests go through
 without one; if a token is set, **every** route (including `/ping`) requires
 `Authorization: Bearer <token>` and returns `401` without it. From the
-agent's side, never assume the server is auth-disabled — always pass the token
+agent's side, never assume the server is auth-disabled; always pass the token
 the user provided if there is one.
 
 ## How It Works
@@ -201,16 +203,16 @@ the user provided if there is one.
 cancels. All request/response bodies are JSON. Asset class is the URL prefix
 and every per-symbol endpoint has the same shape across classes:
 
-- `GET /<class>/<symbol>` — contract details
-- `GET /<class>/<symbol>/tick` — snapshot bid/ask/last (+ Greeks on options)
-- `GET /<class>/<symbol>/rates` — historical OHLC bars
-- `GET /<class>/<symbol>/ticks` — historical raw ticks (stocks only, currently)
-- `POST /<class>/<symbol>/rates/ta` — bars + wickworks TA
+- `GET /<class>/<symbol>`: contract details
+- `GET /<class>/<symbol>/tick`: snapshot bid/ask/last (+ Greeks on options)
+- `GET /<class>/<symbol>/rates`: historical OHLC bars
+- `GET /<class>/<symbol>/ticks`: historical raw ticks (stocks only, currently)
+- `POST /<class>/<symbol>/rates/ta`: bars + wickworks TA
 
 Classes: `/stocks`, `/options`, `/futures`, `/cfd`, `/forex` (path segment is
 `{pair}`, e.g. `EURUSD`), `/crypto`.
 
-**Error envelope** — every error is:
+**Error envelope.** Every error is:
 
 ```json
 { "code": "UPPER_SNAKE_CASE", "message": "human readable", "details": { } }
@@ -218,37 +220,38 @@ Classes: `/stocks`, `/options`, `/futures`, `/cfd`, `/forex` (path segment is
 
 `details` is optional. Status codes: `400` bad input, `401` missing/bad token,
 `404` unknown contract/order/account, `429` `RATE_LIMIT_NEAR` (preemptive
-pacing gate — back off and retry, IBKR access stays intact), `502` upstream
-(IB Gateway / wickworks) failure, `503` dependency down (gateway disconnected
-or wickworks URL unset).
+pacing gate: back off and retry, IBKR access stays intact), `422` request
+failed schema validation (`VALIDATION_FAILED`), `500` unhandled server error,
+`502` upstream failure (wickworks error, or no tick from IBKR), `503`
+`TA_SIDECAR_UNAVAILABLE` (no wickworks URL configured).
 
-**Caching + `?refresh`.** Cacheable read endpoints (`/rates`, `/ticks`,
-`rates/ta`, `/<class>/{symbol}`, `/options/{symbol}/chain`,
-`/futures/{symbol}/continuous|contracts`, `/history/*`) transparently read
-from an on-disk cache and write results back. Pass `?refresh=true` to bypass
-the cache read and force a fresh upstream fetch (still written back). Default
-`false` — caching is recommended.
+**Caching + `?refresh`.** Contract details (`/<class>/{symbol}`),
+`/options/{symbol}/chain` and `/futures/{symbol}/continuous|contracts` are
+served from an on-disk cache with a TTL (1 to 7 days). Pass `?refresh=true` on
+those to skip the cached copy and fetch again. `/rates`, `/ticks`, `rates/ta`
+and `/history/*` accept `refresh` too but always fetch from IBKR; the server
+only archives their results to disk.
 
 ## Asset-Class Routing
 
 | Prefix | Class | secType | Defaults | Required query params |
 |---|---|---|---|---|
-| `/stocks/{symbol}` | Equities | STK | `exchange=SMART`, `currency=USD` | — |
+| `/stocks/{symbol}` | Equities | STK | `exchange=SMART`, `currency=USD` |  |
 | `/options/{symbol}` | Options | OPT | `exchange=SMART`, `currency=USD`, `multiplier=100` | `expiry`, `strike`, `right` |
-| `/options/{symbol}/chain` | Option chain | — | — | — (`underlyingSecType=STK` default) |
+| `/options/{symbol}/chain` | Option chain |  |  | (`underlyingSecType=STK` default) |
 | `/futures/{symbol}` | Futures | FUT | `currency=USD` | `exchange` **and** `expiry` |
 | `/futures/{symbol}/continuous` | Continuous future | CONTFUT | `currency=USD` | `exchange` |
 | `/futures/{symbol}/contracts` | All expiries | FUT | `currency=USD` | `exchange` |
-| `/cfd/{symbol}` | CFDs | CFD | `exchange=SMART`, `currency=USD` | — |
-| `/forex/{pair}` | Currencies | CASH | `exchange=IDEALPRO` | — |
-| `/crypto/{symbol}` | Crypto | CRYPTO | `exchange=PAXOS`, `currency=USD` | — |
+| `/cfd/{symbol}` | CFDs | CFD | `exchange=SMART`, `currency=USD` |  |
+| `/forex/{pair}` | Currencies | CASH | `exchange=IDEALPRO` |  |
+| `/crypto/{symbol}` | Crypto | CRYPTO | `exchange=PAXOS`, `currency=USD` |  |
 
-Defaults come from `config.yaml:contract_defaults.<class>` on the server —
-omit a field to use the default, or override it per request via the query
-param. Futures **must** carry an explicit `exchange` (CME, NYMEX, GLOBEX, …)
-— there is no default.
+Defaults come from `config.yaml:contract_defaults.<class>` on the server.
+Omit a field to use the default, or override it per request via the query
+param. Futures **must** carry an explicit `exchange` (CME, NYMEX, GLOBEX, …);
+there is no default.
 
-## API — System & Account (read-only)
+## API: System & Account (read-only)
 
 ### `GET /ping`
 
@@ -263,7 +266,7 @@ Liveness + gateway connection state.
 
 ### `GET /accounts`
 
-`{ "accounts": ["DU1234567", ...] }` — every account the login can trade.
+`{ "accounts": ["DU1234567", ...] }`: every account the login can trade.
 Paper accounts start `DU`, live accounts start `U`.
 
 ### `GET /account` and `GET /account/values`
@@ -272,14 +275,14 @@ Both take optional `?account=<id>`. Return
 `{ "accounts": { "<id>": { "<Tag>": { "value": "...", "currency": "...", "modelCode": "..." }, ... } } }`.
 `/account` is the summary set (NetLiquidation, AvailableFunds, BuyingPower,
 maintenance margin, …); `/account/values` is the fuller raw account-values
-stream. Values are IBKR tag strings — parse `value` as needed.
+stream. Values are IBKR tag strings; parse `value` as needed.
 
 ### `GET /positions`
 
 Optional `?account=<id>`. Returns
 `{ "positions": [ { "account", "contract": {conid, symbol, secType, exchange, currency, ...}, "position": <qty>, "avgCost": <number> } ] }`.
 
-## API — Market Data (read-only)
+## API: Market Data (read-only)
 
 `GET /<class>/<symbol>` returns `{ "contracts": [ { "contract": {...}, "minTick", "longName", "validExchanges": [...], "tradingHours", "liquidHours", "timeZoneId", ... } ] }`.
 
@@ -314,13 +317,13 @@ Historical OHLC bars. Response:
 
 | Param | Required | Default | Notes |
 |---|---|---|---|
-| `duration` | **yes** | — | IBKR duration string: `60 S` / `1 D` / `13 W` / `6 M` / `1 Y` (URL-encode the space as `+` or `%20`) |
-| `barSize` | no | — | `1 min` / `15 mins` / `1 hour` / `1 day` etc. (IBKR bar-size strings) |
+| `duration` | **yes** |  | IBKR duration string: `60 S` / `1 D` / `13 W` / `6 M` / `1 Y` (URL-encode the space as `+` or `%20`) |
+| `barSize` | no |  | `1 min` / `15 mins` / `1 hour` / `1 day` etc. (IBKR bar-size strings) |
 | `endDateTime` | no | now | `""` = now, or `YYYYMMDD HH:MM:SS` UTC |
-| `whatToShow` | no | — | `TRADES` / `MIDPOINT` / `BID` / `ASK` / `ADJUSTED_LAST` / … |
+| `whatToShow` | no |  | `TRADES` / `MIDPOINT` / `BID` / `ASK` / `ADJUSTED_LAST` / … |
 | `useRTH` | no | `false` | regular trading hours only |
 | `exchange`, `currency`, `primaryExchange` | no | class defaults | contract overrides |
-| `refresh` | no | `false` | bypass cache read |
+| `refresh` | no | `false` | accepted; bars are always fetched from IBKR |
 
 Options/futures rates also take the contract-selecting params (`expiry`,
 `strike`, `right` for options; `expiry` + `exchange` for futures).
@@ -343,9 +346,9 @@ Historical raw ticks (equities). Response
 
 | Param | Required | Default | Notes |
 |---|---|---|---|
-| `startDateTime` / `endDateTime` | no | — | UTC window bounds |
-| `numberOfTicks` | no | `1000` | 1–1000 |
-| `whatToShow` | no | — | `TRADES` / `BID_ASK` / `MIDPOINT` |
+| `startDateTime` / `endDateTime` | no |  | UTC window bounds |
+| `numberOfTicks` | no | `1000` | 1 to 1000 |
+| `whatToShow` | no |  | `TRADES` / `BID_ASK` / `MIDPOINT` |
 | `useRTH` | no | `false` | |
 | `refresh` | no | `false` | |
 
@@ -361,9 +364,9 @@ Both require `exchange`. `/continuous` returns one continuous contract;
 `/contracts` returns every expiry (`?includeExpired=true` to include expired).
 Both return the `ContractDetailsList` shape (`{ "contracts": [...] }`).
 
-## API — `POST /<class>/<symbol>/rates/ta`
+## API: `POST /<class>/<symbol>/rates/ta`
 
-Bars + wickworks TA in one round-trip. **POST but read-only** — no account
+Bars + wickworks TA in one round-trip. **POST but read-only**: no account
 mutation. Contract-selecting params (`expiry`/`strike`/`right`,
 `exchange`/`currency`) go in the query string; the bar window + indicator spec
 go in the JSON body.
@@ -372,17 +375,17 @@ go in the JSON body.
 
 | Field | Required | Default | Notes |
 |---|---|---|---|
-| `duration` | **yes** | — | IBKR duration string (`200 D`, `1 Y`) |
-| `barSize` | no | — | IBKR bar-size string |
-| `endDateTime` | no | — | `""` = now, or `YYYYMMDD HH:MM:SS` UTC |
-| `whatToShow` | no | — | `TRADES` / `MIDPOINT` / `ADJUSTED_LAST` / … |
+| `duration` | **yes** |  | IBKR duration string (`200 D`, `1 Y`) |
+| `barSize` | no |  | IBKR bar-size string |
+| `endDateTime` | no |  | `""` = now, or `YYYYMMDD HH:MM:SS` UTC |
+| `whatToShow` | no |  | `TRADES` / `MIDPOINT` / `ADJUSTED_LAST` / … |
 | `useRTH` | no | `false` | |
-| `indicators` | no | — | wickworks indicator spec (see below) |
-| `recentBars` | no | — | reserved; wickworks may ignore it |
+| `indicators` | no |  | wickworks indicator spec (see below) |
+| `recentBars` | no |  | reserved; wickworks may ignore it |
 
 Response: `{ "symbol"?, "secType"?, "bars": [ ... ], "ta": { <keys mirror your indicators object> }, "asOf"? }`.
 
-`indicators` shape — `"name": true` for defaults, or `"name": {"length": 21, ...}`
+`indicators` shape: `"name": true` for defaults, or `"name": {"length": 21, ...}`
 to tune (params flat on the object; add `"type": "<name>"` only when the
 output key must differ from the indicator name, e.g. two RSIs as
 `rsi14`/`rsi21`). Catalog (same wickworks build as mt5-httpapi):
@@ -418,7 +421,7 @@ curl -s -X POST -H "Authorization: Bearer $API_TOKEN" \
   }'
 ```
 
-## API — Orders (MUTATING — confirmation required)
+## API: Orders (MUTATING, confirmation required)
 
 > **Every `POST /orders`, `POST /options/combo`, `POST /options/exercise`,
 > `DELETE /orders/{orderId}`, and `DELETE /orders` opens, exercises, or
@@ -429,9 +432,9 @@ curl -s -X POST -H "Authorization: Bearer $API_TOKEN" \
 > specific action; (3) wait for an explicit yes. A prior confirmation does not
 > carry over. **Never place, modify, or cancel an order unless the user
 > explicitly requested that specific action with the specific
-> symbol/side/quantity/price** — do not act on a vague instruction, and never
+> symbol/side/quantity/price**. Do not act on a vague instruction, and never
 > place a "similar" or "adjusted" order the user didn't ask for. **Never
-> auto-retry a rejected order** — a `4xx`/`5xx` or a `Trade` whose
+> auto-retry a rejected order**: a `4xx`/`5xx` or a `Trade` whose
 > `orderStatus.status` shows a rejection is a stop; report the rejection
 > reason to the user and wait for a fresh, explicit instruction before
 > submitting anything again, even with the same parameters.
@@ -448,24 +451,24 @@ Place an order on any asset class. Body (`OrderRequest`):
 
 | Field | Required | Default | Notes |
 |---|---|---|---|
-| `assetClass` | **yes** | — | `stock` / `option` / `future` / `cfd` / `forex` / `crypto` |
-| `symbol` | **yes** | — | root symbol |
-| `action` | **yes** | — | `BUY` or `SELL` |
-| `quantity` | **yes** | — | > 0 |
+| `assetClass` | **yes** |  | `stock` / `option` / `future` / `cfd` / `forex` / `crypto` |
+| `symbol` | **yes** |  | root symbol |
+| `action` | **yes** |  | `BUY` or `SELL` |
+| `quantity` | **yes** |  | > 0 |
 | `orderType` | no | `MKT` | `MKT` / `LMT` / `STP` / `STP LMT` / … (IBKR order types) |
-| `lmtPrice` | no | — | required for `LMT` |
-| `auxPrice` | no | — | stop trigger for stop orders |
+| `lmtPrice` | no |  | required for `LMT` |
+| `auxPrice` | no |  | stop trigger for stop orders |
 | `tif` | no | `DAY` | time-in-force |
 | `outsideRth` | no | `false` | allow fills outside regular hours |
 | `transmit` | no | `true` | `false` = stage without transmitting |
-| `expiry` / `strike` / `right` | for derivatives | — | option/future contract selectors |
+| `expiry` / `strike` / `right` | for derivatives |  | option/future contract selectors |
 | `exchange` / `currency` / `multiplier` / `tradingClass` / `primaryExchange` | no | class defaults | contract overrides |
-| `conid` | no | — | pass a resolved conid to skip contract lookup |
+| `conid` | no |  | pass a resolved conid to skip contract lookup |
 | `account` | no | server default | target account |
-| `goodAfterTime` / `goodTillDate` / `ocaGroup` / `parentId` | no | — | advanced routing |
+| `goodAfterTime` / `goodTillDate` / `ocaGroup` / `parentId` | no |  | advanced routing |
 
 Returns a `Trade` snapshot (check `orderStatus.status`). This places a REAL
-order and moves real money — only call it for a symbol/side/quantity/price
+order and moves real money. Only call it for a symbol/side/quantity/price
 the user explicitly asked for. Example (place ONLY after explicit
 per-action confirmation):
 
@@ -477,7 +480,7 @@ curl -s -X POST -H "Authorization: Bearer $API_TOKEN" \
   "$IBKR_HTTPAPI_URL/orders" \
   -d '{"assetClass":"stock","symbol":"AAPL","action":"BUY","quantity":10,"orderType":"MKT"}'
 
-# Futures limit order — same rule: echo symbol/side/qty/price, confirm, then send.
+# Futures limit order. Same rule: echo symbol/side/qty/price, confirm, then send.
 curl -s -X POST -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   "$IBKR_HTTPAPI_URL/orders" \
@@ -487,29 +490,29 @@ curl -s -X POST -H "Authorization: Bearer $API_TOKEN" \
 
 If the response shows a rejection (non-2xx, or `orderStatus.status`
 indicating rejection/error), **do not resubmit**. Report the rejection to
-the user and wait for a new explicit instruction — even a retry of the
+the user and wait for a new explicit instruction. Even a retry of the
 identical order requires fresh confirmation.
 
-### `DELETE /orders/{orderId}` — cancel one
+### `DELETE /orders/{orderId}`: cancel one
 
 `{ "status": "cancelling", "orderId": <id> }`. Confirmation required.
 
-### `DELETE /orders` — cancel ALL (global cancel)
+### `DELETE /orders`: cancel ALL (global cancel)
 
 `{ "status": "global_cancel_requested" }`. Cancels **every** open order.
 Enumerate with `GET /orders`, show the list, confirm the whole batch.
 
-### `POST /options/combo` — multi-leg (BAG)
+### `POST /options/combo`: multi-leg (BAG)
 
 Vertical / condor / butterfly / calendar. Body (`ComboOrderRequest`):
-`symbol` (req), `legs` (req — array of `{ conid, ratio (default 1), action (BUY/SELL), exchange (default SMART) }`), `action` (req), `quantity` (req),
+`symbol` (req), `legs` (req, array of `{ conid, ratio (default 1), action (BUY/SELL), exchange (default SMART) }`), `action` (req), `quantity` (req),
 `orderType` (default `LMT`), `lmtPrice`, `tif` (default `DAY`), `exchange`
 (default `SMART`), `currency` (default `USD`), `account`. Returns a `Trade`.
 Resolve leg `conid`s from `GET /options/{symbol}/chain` + `GET /options/{symbol}`
 first. Confirmation required.
 
 ```bash
-# Vertical call spread — confirmed action only.
+# Vertical call spread: confirmed action only.
 curl -s -X POST -H "Authorization: Bearer $API_TOKEN" \
   -H "Content-Type: application/json" \
   "$IBKR_HTTPAPI_URL/options/combo" \
@@ -519,14 +522,14 @@ curl -s -X POST -H "Authorization: Bearer $API_TOKEN" \
        "action":"BUY","quantity":1,"orderType":"LMT","lmtPrice":1.20}'
 ```
 
-### `POST /options/exercise` — exercise / lapse
+### `POST /options/exercise`: exercise / lapse
 
-Body (`ExerciseRequest`): `conid` (req), `action` (req — `EXERCISE` or
+Body (`ExerciseRequest`): `conid` (req), `action` (req, `EXERCISE` or
 `LAPSE`), `quantity` (req, ≥ 1), `account` (req), `override` (default `false`).
 Returns `{ "status", "contract": {...}, "action" }`. Exercise/lapse is
-irreversible — confirmation required.
+irreversible; confirmation required.
 
-## API — History (read-only)
+## API: History (read-only)
 
 ### `GET /history/executions`
 
@@ -545,7 +548,7 @@ When `api_token` is set on the server (via `config.yaml:api_token` or the
 `API_TOKEN` env), **every** route requires `Authorization: Bearer <token>`.
 The token is compared in constant time (`hmac.compare_digest`); a
 missing/wrong token returns `401` with the standard error envelope
-(`code: UNAUTHORIZED`). Empty/unset token = wide open — any process that can
+(`code: UNAUTHORIZED`). Empty/unset token = wide open: any process that can
 reach the socket can read account state and place orders, so on untrusted
 networks the token is mandatory.
 
@@ -554,7 +557,7 @@ curl -s -H "Authorization: Bearer $API_TOKEN" "$IBKR_HTTPAPI_URL/ping"
 ```
 
 The agent obtains the token **only** from the `API_TOKEN` env var the user set,
-or from the user directly — never by reading `config.yaml` / `.env.ibkr` /
+or from the user directly, never by reading `config.yaml` / `.env.ibkr` /
 workspace files.
 
 ## Typical Workflows
@@ -592,7 +595,7 @@ curl -s -H "Authorization: Bearer $API_TOKEN" \
 ```bash
 # 1. Which account am I about to touch? (paper DU... vs live U...)
 curl -s -H "Authorization: Bearer $API_TOKEN" "$IBKR_HTTPAPI_URL/accounts" | jq
-# 2. Account state + open positions/orders — context before mutating.
+# 2. Account state + open positions/orders: context before mutating.
 curl -s -H "Authorization: Bearer $API_TOKEN" "$IBKR_HTTPAPI_URL/account" | jq
 curl -s -H "Authorization: Bearer $API_TOKEN" "$IBKR_HTTPAPI_URL/positions" | jq
 curl -s -H "Authorization: Bearer $API_TOKEN" "$IBKR_HTTPAPI_URL/orders" | jq
@@ -618,16 +621,16 @@ curl -s -H "Authorization: Bearer $API_TOKEN" "$IBKR_HTTPAPI_URL/orders" | jq '.
    prefix. `IBKR_HTTPAPI_URL=http://localhost:8889/v1`.
 2. **There is no order-modify endpoint.** Cancel + re-place (each confirmed).
 3. **Futures need `exchange` AND `expiry`.** No exchange default for futures.
-4. **`rates/ta` is POST but read-only** — never account-mutating.
-5. **`429 RATE_LIMIT_NEAR` is expected under load** — the server gates
+4. **`rates/ta` is POST but read-only**, never account-mutating.
+5. **`429 RATE_LIMIT_NEAR` is expected under load.** The server gates
    *before* crossing IBKR's pacing caps. Read `details.retry_after_sec`, back
-   off, retry. Don't hammer through it — repeat pacing violations can get
+   off, retry. Don't hammer through it: repeat pacing violations can get
    IBKR API access revoked.
-6. **`connected: false` on `/ping`** means the gateway socket is down (nightly
-   IBKR restart ~01:00 ET, weekly 2FA push, or still booting). Market-data and
-   order calls fail until it reconnects; retry after a short wait.
-7. **Delayed data has null Greeks/quotes** — free `market_data_type: 3` gives
-   15–20 min delayed bars and often null option Greeks. Real-time needs an
+6. **A request that hangs** (often ending in a `504`) means the gateway
+   socket is down (daily IBKR restart, weekly 2FA push, or still booting). The
+   server waits for the reconnect; retry after a short wait.
+7. **Delayed data has null Greeks/quotes.** Free `market_data_type: 3` gives
+   15 to 20 min delayed bars and often null option Greeks. Real-time needs an
    OPRA subscription + `market_data_type: 1` on the server.
-8. **`?refresh=true`** forces a fresh upstream pull on any cacheable read; the
-   value is still cached for next time.
+8. **`?refresh=true`** forces a fresh upstream pull of contract details,
+   chains and futures lists; the new value is cached for next time.

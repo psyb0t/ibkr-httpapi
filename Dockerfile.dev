@@ -19,7 +19,11 @@ RUN apt-get update \
 
 COPY requirements.txt requirements-dev.txt ./
 RUN pip install --no-cache-dir --require-hashes -r requirements.txt \
-    && pip install --no-cache-dir -r requirements-dev.txt
+    && pip install --no-cache-dir -r requirements-dev.txt \
+    && pyright --version
+# `pyright --version` above makes the pip pyright wrapper download its Node.js
+# runtime and the pyright package at build time. `make lint` runs with
+# `--network none`, so without this the first pyright call fails offline.
 
 # Go toolchain + oapi-codegen for `make generate-client-go`.
 # Pinned Go version + pinned oapi-codegen tag — bump both intentionally.

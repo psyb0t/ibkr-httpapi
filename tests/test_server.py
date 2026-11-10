@@ -114,3 +114,17 @@ def test_validation_error_envelope(client, mock_ib):
     body = r.json()
     assert body["code"] == "VALIDATION_FAILED"
     assert "errors" in body["details"]
+
+
+def test_rates_ta_reaches_handler(client, mock_ib, monkeypatch):
+    # The generated router passes (refresh, body) positionally; impl must take
+    # them in that order or `body` arrives as a bool and the request 500s.
+    # With the TA sidecar unset the handler gets as far as the wickworks call
+    # and answers 503 with its own code.
+    from ib_async import Stock
+
+    monkeypatch.setattr("ibkrapi.marketdata.WICKWORKS_URL", "")
+    mock_ib.qualifyContractsAsync.return_value = [Stock("AAPL", "SMART", "USD")]
+    r = client.post("/v1/stocks/AAPL/rates/ta", json={"duration": "1 D"})
+    assert r.status_code == 503
+    assert r.json()["code"] == "TA_SIDECAR_UNAVAILABLE"

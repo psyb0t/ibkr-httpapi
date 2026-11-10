@@ -299,9 +299,9 @@ async def get_or_fetch(
     symbol: str,
     bar_size: str | None,
     underlying: str | None,
-    requested_bars: list[dict],
+    requested_bars: list[dict] | None,
     fetch_full: Callable[[], Awaitable[list[dict]]],
-    refresh: bool = False,
+    refresh: bool | None = False,
 ) -> tuple[list[dict], str]:
     """High-level cache-aside.
 

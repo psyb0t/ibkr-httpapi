@@ -1,5 +1,4 @@
-# Claude / agent scratch — never commit
-CLAUDE.md
+# Agent scratch, never commit
 CLAUDE.local.md
 .research_files/
 .agent_knowledge/
@@ -63,3 +62,9 @@ fix.sh
 # Brutal-review audit logs
 .brutal_reviews/
 .telemetry/
+
+# Local config overrides at any depth
+*.local.json
+
+# Local build and test output (docs site, scratch)
+.testing/

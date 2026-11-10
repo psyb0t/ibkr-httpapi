@@ -3,8 +3,8 @@
   "id": "@psyb0t/ibkr-httpapi",
   "version": "0.0.0",
   "type": "code-plugin",
-  "summary": "Wire an OpenClaw agent to a self-hosted ibkr-httpapi (Interactive Brokers HTTP bridge) instance over MCP — REST-mirroring tools for market data, account/positions, and order entry.",
-  "description": "A thin stdio<->HTTP bridge that connects an MCP client (OpenClaw, Claude, Cursor, Codex, ...) to a running ibkr-httpapi instance's MCP endpoint (/mcp), exposing the same REST surface as three generic tools: ping (gateway liveness), endpoints (the live OpenAPI catalog of every route), and request (call any REST endpoint by method/path/query/body). ibkr-httpapi is self-hosted — you run the server yourself and point this bridge at it. It fronts a LIVE Interactive Brokers account: order placement, cancellation, and option exercise are real, irreversible actions. See https://github.com/psyb0t/ibkr-httpapi.",
+  "summary": "Wire an OpenClaw agent to a self-hosted ibkr-httpapi (Interactive Brokers HTTP bridge) instance over MCP: REST-mirroring tools for market data, account/positions, and order entry.",
+  "description": "A thin stdio<->HTTP bridge that connects an MCP client (OpenClaw, Claude, Cursor, Codex, ...) to a running ibkr-httpapi instance's MCP endpoint (/mcp), exposing the REST API as 24 typed tools (market data, option chains, futures lists, orders, account, positions, history and ping) plus endpoints (the live OpenAPI catalog of every route) and request (call any REST endpoint by method/path/query/body). ibkr-httpapi is self-hosted: you run the server yourself and point this bridge at it. It fronts a LIVE Interactive Brokers account: order placement, cancellation, and option exercise are real, irreversible actions. See https://github.com/psyb0t/ibkr-httpapi.",
   "extensions": ["./bin/cli.js"],
   "compat": {
     "pluginApi": ">=2026.3.24-beta.2"
@@ -19,7 +19,7 @@
     },
     "IBKR_HTTPAPI_TOKEN": {
       "required": false,
-      "description": "Bearer token — required whenever the server has api_token/API_TOKEN configured (the same token that guards the REST API; empty server-side token means auth is disabled)."
+      "description": "Bearer token, required whenever the server has api_token/API_TOKEN configured (the same token that guards the REST API; empty server-side token means auth is disabled)."
     }
   },
   "configSchema": {
@@ -32,7 +32,7 @@
       },
       "token": {
         "type": "string",
-        "description": "Bearer token — required whenever the server has api_token/API_TOKEN configured (the same token that guards the REST API; empty server-side token means auth is disabled)."
+        "description": "Bearer token, required whenever the server has api_token/API_TOKEN configured (the same token that guards the REST API; empty server-side token means auth is disabled)."
       }
     }
   }

@@ -3,7 +3,7 @@
 // running ibkr-httpapi server's Streamable-HTTP endpoint (`$IBKR_HTTPAPI_URL/mcp/`),
 // authenticating with `$IBKR_HTTPAPI_TOKEN` when the server requires it.
 //
-// stdout IS the MCP protocol channel, so diagnostics go to stderr only — the
+// stdout IS the MCP protocol channel, so diagnostics go to stderr only. The
 // sole output here is a fatal pre-launch console.error (user-facing CLI
 // output). The token is passed to the proxy as an argv header, never logged.
 import { spawnSync } from "node:child_process";
@@ -22,14 +22,14 @@ if (!base) {
 Point this bridge at your running ibkr-httpapi server, e.g.:
   export IBKR_HTTPAPI_URL=http://localhost:8889
 
-ibkr-httpapi is self-hosted — see https://github.com/psyb0t/ibkr-httpapi`,
+ibkr-httpapi is self-hosted, see https://github.com/psyb0t/ibkr-httpapi`,
   );
   process.exit(1);
 }
 
 // /mcp is mounted at the app ROOT, not under the /v1 REST prefix. IBKR_HTTPAPI_URL
-// conventionally carries the /v1 REST base, so strip a trailing /v1 — this way the
-// MCP URL is correct whether the operator points the var at the root or at /v1.
+// conventionally carries the /v1 REST base. Stripping a trailing /v1 keeps the
+// MCP URL correct whether the operator points the var at the root or at /v1.
 const root = base.replace(/\/+$/, "").replace(/\/v1$/, "");
 const url = `${root}${MCP_PATH}`;
 const token = process.env.IBKR_HTTPAPI_TOKEN;

@@ -129,7 +129,7 @@ async def _cached_bars(
     end_dt: str | None,
     what: str | None,
     rth: bool,
-    refresh: bool = False,
+    refresh: bool | None = False,
 ) -> list[dict]:
     """Historical bars wrapped with pacing + transparent disk cache.
 
@@ -199,7 +199,7 @@ async def _gated_tick(
 
 
 async def _cached_details(
-    contract, *, scope: str = "contract_details", refresh: bool = False
+    contract, *, scope: str = "contract_details", refresh: bool | None = False
 ) -> list[dict]:
     """Long-TTL JSON cache for contract metadata."""
     key = pacing.contract_key(contract)
@@ -220,7 +220,7 @@ async def _paced_rates_ta(
     symbol: str,
     underlying: str | None = None,
     default_what: str | None = None,
-    refresh: bool = False,
+    refresh: bool | None = False,
 ) -> dict:
     """Bars-via-cache + wickworks TA enrichment.
 
@@ -290,7 +290,7 @@ async def get_account_summary(account: str | None) -> AccountSummary:
             "currency": row.currency,
             "modelCode": row.modelCode,
         }
-    return AccountSummary(accounts=by_account)
+    return AccountSummary.model_validate({"accounts": by_account})
 
 
 async def get_account_values(account: str | None) -> AccountSummary:
@@ -300,13 +300,13 @@ async def get_account_values(account: str | None) -> AccountSummary:
     for v in values:
         slot = by_account.setdefault(v.account, {})
         slot[v.tag] = {"value": v.value, "currency": v.currency, "modelCode": v.modelCode}
-    return AccountSummary(accounts=by_account)
+    return AccountSummary.model_validate({"accounts": by_account})
 
 
 async def list_positions(account: str | None) -> PositionsList:
     ib = await get_ib()
     all_positions = ib.positions(account or "")
-    return PositionsList(positions=[position_dict(p) for p in all_positions])
+    return PositionsList.model_validate({"positions": [position_dict(p) for p in all_positions]})
 
 
 # ─── stocks ────────────────────────────────────────────────────────
@@ -322,10 +322,12 @@ def _stock(symbol, exchange, currency, primary_exchange):
 
 
 async def get_stock_contract(
-    symbol, exchange, currency, primary_exchange, refresh=False
+    symbol, exchange, currency, primary_exchange, refresh: bool | None = False
 ) -> ContractDetailsList:
     contract = _stock(symbol, exchange, currency, primary_exchange)
-    return ContractDetailsList(contracts=await _cached_details(contract, refresh=refresh))
+    return ContractDetailsList.model_validate(
+        {"contracts": await _cached_details(contract, refresh=refresh)}
+    )
 
 
 async def get_stock_tick(symbol, exchange, currency, primary_exchange) -> Ticker:
@@ -343,7 +345,7 @@ async def get_stock_rates(
     exchange,
     currency,
     primary_exchange,
-    refresh=False,
+    refresh: bool | None = False,
 ) -> BarsResponse:
     contract = _stock(symbol, exchange, currency, primary_exchange)
     bars = await _cached_bars(
@@ -357,7 +359,7 @@ async def get_stock_rates(
         rth=bool(use_r_t_h),
         refresh=refresh,
     )
-    return BarsResponse(symbol=symbol, secType=SECTYPE_STK, bars=bars)
+    return BarsResponse.model_validate({"symbol": symbol, "secType": SECTYPE_STK, "bars": bars})
 
 
 async def get_stock_ticks(
@@ -370,7 +372,7 @@ async def get_stock_ticks(
     exchange,
     currency,
     primary_exchange,
-    refresh=False,
+    refresh: bool | None = False,
 ) -> TicksResponse:
     contract = _stock(symbol, exchange, currency, primary_exchange)
     ticks = await _paced_ticks(
@@ -381,7 +383,7 @@ async def get_stock_ticks(
         what=what_to_show,
         rth=bool(use_r_t_h),
     )
-    return TicksResponse(symbol=symbol, secType=SECTYPE_STK, ticks=ticks)
+    return TicksResponse.model_validate({"symbol": symbol, "secType": SECTYPE_STK, "ticks": ticks})
 
 
 async def get_stock_rates_t_a(
@@ -389,8 +391,8 @@ async def get_stock_rates_t_a(
     exchange,
     currency,
     primary_exchange,
+    refresh: bool | None,
     body: RatesTARequest,
-    refresh=False,
 ) -> RatesTAResponse:
     contract = _stock(symbol, exchange, currency, primary_exchange)
     return RatesTAResponse(
@@ -421,7 +423,7 @@ async def get_option_chain(
     underlying_sec_type,
     fut_fop_exchange,
     underlying_con_id,
-    refresh=False,
+    refresh: bool | None = False,
 ) -> OptionChain:
     ib = await get_ib()
     if underlying_con_id is None:
@@ -485,10 +487,12 @@ async def get_option_contract(
     currency,
     multiplier,
     trading_class,
-    refresh=False,
+    refresh: bool | None = False,
 ) -> ContractDetailsList:
     contract = _option(symbol, expiry, strike, right, exchange, currency, multiplier, trading_class)
-    return ContractDetailsList(contracts=await _cached_details(contract, refresh=refresh))
+    return ContractDetailsList.model_validate(
+        {"contracts": await _cached_details(contract, refresh=refresh)}
+    )
 
 
 async def get_option_tick(
@@ -516,7 +520,7 @@ async def get_option_rates(
     currency,
     multiplier,
     trading_class,
-    refresh=False,
+    refresh: bool | None = False,
 ) -> BarsResponse:
     contract = _option(symbol, expiry, strike, right, exchange, currency, multiplier, trading_class)
     occ = f"{symbol}_{expiry}{(right or '').upper()}{round(float(strike) * 1000):08d}"
@@ -532,8 +536,15 @@ async def get_option_rates(
         rth=bool(use_r_t_h),
         refresh=refresh,
     )
-    return BarsResponse(
-        symbol=symbol, secType=SECTYPE_OPT, expiry=expiry, strike=strike, right=right, bars=bars
+    return BarsResponse.model_validate(
+        {
+            "symbol": symbol,
+            "secType": SECTYPE_OPT,
+            "expiry": expiry,
+            "strike": strike,
+            "right": right,
+            "bars": bars,
+        }
     )
 
 
@@ -546,8 +557,8 @@ async def get_option_rates_t_a(
     currency,
     multiplier,
     trading_class,
+    refresh: bool | None,
     body: RatesTARequest,
-    refresh=False,
 ) -> RatesTAResponse:
     contract = _option(symbol, expiry, strike, right, exchange, currency, multiplier, trading_class)
     occ = f"{symbol}_{expiry}{(right or '').upper()}{round(float(strike) * 1000):08d}"
@@ -625,10 +636,12 @@ async def exercise_option(body: ExerciseRequest) -> ExerciseResponse:
             account=body.account,
             override=1 if body.override else 0,
         )
-    return ExerciseResponse(
-        status="submitted",
-        contract=contract_dict(qualified_contract),
-        action=body.action,
+    return ExerciseResponse.model_validate(
+        {
+            "status": "submitted",
+            "contract": contract_dict(qualified_contract),
+            "action": body.action,
+        }
     )
 
 
@@ -647,7 +660,9 @@ def _future(symbol, expiry, exchange, currency, multiplier, trading_class, inclu
     )
 
 
-async def get_continuous_future(symbol, exchange, currency, refresh=False) -> ContractDetailsList:
+async def get_continuous_future(
+    symbol, exchange, currency, refresh: bool | None = False
+) -> ContractDetailsList:
     contract = ContFuture(symbol=symbol, exchange=exchange, currency=currency or "USD")
     ib = await get_ib()
 
@@ -662,11 +677,11 @@ async def get_continuous_future(symbol, exchange, currency, refresh=False) -> Co
         _fetch,
         refresh=refresh,
     )
-    return ContractDetailsList(contracts=cached)
+    return ContractDetailsList.model_validate({"contracts": cached})
 
 
 async def list_future_contracts(
-    symbol, exchange, currency, include_expired, refresh=False
+    symbol, exchange, currency, include_expired, refresh: bool | None = False
 ) -> ContractDetailsList:
     contract = _future(symbol, "", exchange, currency, None, None, include_expired=include_expired)
 
@@ -680,7 +695,7 @@ async def list_future_contracts(
         _fetch,
         refresh=refresh,
     )
-    return ContractDetailsList(contracts=cached)
+    return ContractDetailsList.model_validate({"contracts": cached})
 
 
 async def get_future_contract(
@@ -690,10 +705,12 @@ async def get_future_contract(
     currency,
     multiplier,
     trading_class,
-    refresh=False,
+    refresh: bool | None = False,
 ) -> ContractDetailsList:
     contract = _future(symbol, expiry, exchange, currency, multiplier, trading_class)
-    return ContractDetailsList(contracts=await _cached_details(contract, refresh=refresh))
+    return ContractDetailsList.model_validate(
+        {"contracts": await _cached_details(contract, refresh=refresh)}
+    )
 
 
 async def get_future_tick(symbol, expiry, exchange, currency, multiplier, trading_class) -> Ticker:
@@ -717,7 +734,7 @@ async def get_future_rates(
     currency,
     multiplier,
     trading_class,
-    refresh=False,
+    refresh: bool | None = False,
 ) -> BarsResponse:
     contract = _future(symbol, expiry, exchange, currency, multiplier, trading_class)
     bars = await _cached_bars(
@@ -731,7 +748,9 @@ async def get_future_rates(
         rth=bool(use_r_t_h),
         refresh=refresh,
     )
-    return BarsResponse(symbol=symbol, secType=SECTYPE_FUT, expiry=expiry, bars=bars)
+    return BarsResponse.model_validate(
+        {"symbol": symbol, "secType": SECTYPE_FUT, "expiry": expiry, "bars": bars}
+    )
 
 
 async def get_future_rates_t_a(
@@ -741,8 +760,8 @@ async def get_future_rates_t_a(
     currency,
     multiplier,
     trading_class,
+    refresh: bool | None,
     body: RatesTARequest,
-    refresh=False,
 ) -> RatesTAResponse:
     contract = _future(symbol, expiry, exchange, currency, multiplier, trading_class)
     return RatesTAResponse(
@@ -763,9 +782,11 @@ def _cfd(symbol, exchange, currency):
     return contract_factories.cfd(symbol, exchange=exchange, currency=currency)
 
 
-async def get_c_f_d_contract(symbol, exchange, currency, refresh=False) -> ContractDetailsList:
-    return ContractDetailsList(
-        contracts=await _cached_details(_cfd(symbol, exchange, currency), refresh=refresh)
+async def get_c_f_d_contract(
+    symbol, exchange, currency, refresh: bool | None = False
+) -> ContractDetailsList:
+    return ContractDetailsList.model_validate(
+        {"contracts": await _cached_details(_cfd(symbol, exchange, currency), refresh=refresh)}
     )
 
 
@@ -784,7 +805,7 @@ async def get_c_f_d_rates(
     use_r_t_h,
     exchange,
     currency,
-    refresh=False,
+    refresh: bool | None = False,
 ) -> BarsResponse:
     bars = await _cached_bars(
         _cfd(symbol, exchange, currency),
@@ -797,11 +818,11 @@ async def get_c_f_d_rates(
         rth=bool(use_r_t_h),
         refresh=refresh,
     )
-    return BarsResponse(symbol=symbol, secType=SECTYPE_CFD, bars=bars)
+    return BarsResponse.model_validate({"symbol": symbol, "secType": SECTYPE_CFD, "bars": bars})
 
 
 async def get_c_f_d_rates_t_a(
-    symbol, exchange, currency, body: RatesTARequest, refresh=False
+    symbol, exchange, currency, refresh: bool | None, body: RatesTARequest
 ) -> RatesTAResponse:
     return RatesTAResponse(
         **await _paced_rates_ta(
@@ -821,9 +842,9 @@ def _forex(pair, exchange):
     return contract_factories.forex(pair, exchange=exchange)
 
 
-async def get_forex_contract(pair, exchange, refresh=False) -> ContractDetailsList:
-    return ContractDetailsList(
-        contracts=await _cached_details(_forex(pair, exchange), refresh=refresh)
+async def get_forex_contract(pair, exchange, refresh: bool | None = False) -> ContractDetailsList:
+    return ContractDetailsList.model_validate(
+        {"contracts": await _cached_details(_forex(pair, exchange), refresh=refresh)}
     )
 
 
@@ -839,7 +860,7 @@ async def get_forex_rates(
     what_to_show,
     use_r_t_h,
     exchange,
-    refresh=False,
+    refresh: bool | None = False,
 ) -> BarsResponse:
     bars = await _cached_bars(
         _forex(pair, exchange),
@@ -852,11 +873,11 @@ async def get_forex_rates(
         rth=bool(use_r_t_h),
         refresh=refresh,
     )
-    return BarsResponse(pair=pair, secType=SECTYPE_CASH, bars=bars)
+    return BarsResponse.model_validate({"pair": pair, "secType": SECTYPE_CASH, "bars": bars})
 
 
 async def get_forex_rates_t_a(
-    pair, exchange, body: RatesTARequest, refresh=False
+    pair, exchange, refresh: bool | None, body: RatesTARequest
 ) -> RatesTAResponse:
     return RatesTAResponse(
         **await _paced_rates_ta(
@@ -877,9 +898,11 @@ def _crypto(symbol, exchange, currency):
     return contract_factories.crypto(symbol, exchange=exchange, currency=currency)
 
 
-async def get_crypto_contract(symbol, exchange, currency, refresh=False) -> ContractDetailsList:
-    return ContractDetailsList(
-        contracts=await _cached_details(_crypto(symbol, exchange, currency), refresh=refresh)
+async def get_crypto_contract(
+    symbol, exchange, currency, refresh: bool | None = False
+) -> ContractDetailsList:
+    return ContractDetailsList.model_validate(
+        {"contracts": await _cached_details(_crypto(symbol, exchange, currency), refresh=refresh)}
     )
 
 
@@ -900,7 +923,7 @@ async def get_crypto_rates(
     use_r_t_h,
     exchange,
     currency,
-    refresh=False,
+    refresh: bool | None = False,
 ) -> BarsResponse:
     bars = await _cached_bars(
         _crypto(symbol, exchange, currency),
@@ -913,11 +936,11 @@ async def get_crypto_rates(
         rth=bool(use_r_t_h),
         refresh=refresh,
     )
-    return BarsResponse(symbol=symbol, secType=SECTYPE_CRYPTO, bars=bars)
+    return BarsResponse.model_validate({"symbol": symbol, "secType": SECTYPE_CRYPTO, "bars": bars})
 
 
 async def get_crypto_rates_t_a(
-    symbol, exchange, currency, body: RatesTARequest, refresh=False
+    symbol, exchange, currency, refresh: bool | None, body: RatesTARequest
 ) -> RatesTAResponse:
     return RatesTAResponse(
         **await _paced_rates_ta(
@@ -993,7 +1016,7 @@ def _build_order(req: OrderRequest):
     if action not in VALID_ACTIONS:
         raise APIError(400, f"action must be one of {VALID_ACTIONS}", code=CODE_BAD_REQUEST)
     qty = req.quantity
-    ot = req.orderType.upper()
+    ot = (req.orderType or ORDER_TYPE_MKT).upper()
     if ot == ORDER_TYPE_MKT:
         order = MarketOrder(action, qty, tif=req.tif)
     elif ot == ORDER_TYPE_LMT:
@@ -1014,13 +1037,15 @@ def _build_order(req: OrderRequest):
         order = StopLimitOrder(action, qty, req.lmtPrice, req.auxPrice, tif=req.tif)
     else:
         # Unknown order type — pass through as raw Order. Caller's risk.
-        order = Order(action=action, totalQuantity=qty, orderType=ot, tif=req.tif)
+        order = Order(action=action, totalQuantity=qty, orderType=ot, tif=req.tif or "")
         if req.lmtPrice is not None:
             order.lmtPrice = req.lmtPrice
         if req.auxPrice is not None:
             order.auxPrice = req.auxPrice
-    order.outsideRth = req.outsideRth
-    order.transmit = req.transmit
+    if req.outsideRth is not None:
+        order.outsideRth = req.outsideRth
+    if req.transmit is not None:
+        order.transmit = req.transmit
     if req.account:
         order.account = req.account
     if req.goodAfterTime:
@@ -1036,7 +1061,7 @@ def _build_order(req: OrderRequest):
 
 async def list_orders() -> TradesList:
     ib = await get_ib()
-    return TradesList(trades=[trade_dict(t) for t in ib.openTrades()])
+    return TradesList.model_validate({"trades": [trade_dict(t) for t in ib.openTrades()]})
 
 
 async def place_order(body: OrderRequest) -> Trade:
@@ -1107,7 +1132,7 @@ async def get_executions(
     exchange,
     side,
     time_after,
-    refresh=False,
+    refresh: bool | None = False,
 ) -> ExecutionsResponse:
     ib = await get_ib()
     async with pacing.guard("market_data", f"executions:{account or '*'}"):
@@ -1133,13 +1158,15 @@ async def get_executions(
     ]
     # Append-only ledger — grow the goldmine on every call.
     await exec_history.record_executions(fill_dicts)
-    return ExecutionsResponse(fills=fill_dicts)
+    return ExecutionsResponse.model_validate({"fills": fill_dicts})
 
 
-async def get_completed_orders(api_only: bool, refresh=False) -> CompletedOrdersResponse:
+async def get_completed_orders(
+    api_only: bool | None, refresh: bool | None = False
+) -> CompletedOrdersResponse:
     ib = await get_ib()
     async with pacing.guard("market_data", f"completed:{api_only}"):
-        completed = await ib.reqCompletedOrdersAsync(apiOnly=api_only)
+        completed = await ib.reqCompletedOrdersAsync(apiOnly=bool(api_only))
     trade_dicts = [
         {
             "contract": contract_dict(t.contract),
@@ -1149,4 +1176,4 @@ async def get_completed_orders(api_only: bool, refresh=False) -> CompletedOrders
         for t in (completed or [])
     ]
     await exec_history.record_completed_orders(trade_dicts)
-    return CompletedOrdersResponse(trades=trade_dicts)
+    return CompletedOrdersResponse.model_validate({"trades": trade_dicts})

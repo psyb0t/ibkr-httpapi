@@ -135,7 +135,7 @@ async def get_or_fetch(
     fetcher: Callable[[], Awaitable[Any]],
     *,
     ttl_sec: int | None = None,
-    refresh: bool = False,
+    refresh: bool | None = False,
 ) -> tuple[Any, str]:
     """Cache-aside with per-key single-flight.
 

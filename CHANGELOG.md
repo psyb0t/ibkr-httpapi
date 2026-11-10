@@ -4,6 +4,17 @@ All notable changes per release. Versions follow [semver](https://semver.org)
 pre-1.0 conventions: minor bumps may include breaking REST changes (called
 out explicitly), patch bumps are docs / build / fixes only.
 
+## v0.5.8, 2026-11-10
+
+Bug fixes, documentation and CI. No breaking REST change.
+
+- The documentation now lives at https://psyb0t.github.io/ibkr-httpapi/, and the reference material moved there from the README.
+- Fixed the `rates/ta` endpoints for stocks, options, futures, CFDs, forex and crypto, which failed with a 500 on every request because the handler received the `refresh` flag in place of the request body.
+- An order request that sends `orderType`, `outsideRth` or `transmit` as `null` now falls back to the defaults (market order, regular trading hours only, transmitted) instead of failing or passing an empty value to the gateway.
+- CI now runs lint and the unit tests on every branch push. A tag waits for the main run of the same commit to pass, cuts the GitHub release from the tag message, then publishes the skill and the OpenClaw MCP bridge to ClawHub.
+- `make lint` works offline from the first run, because the dev image now downloads pyright's Node.js runtime at build time.
+- Added Buy Me a Coffee to the funding links, and committed `AGENTS.md` plus the project rules in `.agents/rules/` for coding agents.
+
 ## v0.5.7, 2026-10-17
 
 Documentation only. The Python client README drops the install example pinned to `v0.1.0`.

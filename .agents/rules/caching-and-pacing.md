@@ -1,0 +1,11 @@
+# Pacing and disk caches
+
+- Every IBKR call in `ibkrapi/api/impl.py` runs inside `async with pacing.guard(<tier>, <key>)`. Tiers: `historical` (bars, ticks, TA), `market_data` (ticks, contract details, chains, executions, completed orders) and `orders` (place, cancel, exercise). A new IBKR call needs a guard too.
+- A guard raises `APIError(429, code="RATE_LIMIT_NEAR")` when the tier's sliding window reaches `per_window_hard`, or when the same contract key already has `per_contract_per_sec` calls in the last second. Below the hard cap it logs `pacing_soft_cap` at `per_window_soft`. Per-key `asyncio.Lock`s serialize calls on one contract and a semaphore caps `concurrent` calls per tier. Defaults live in `_PACING_DEFAULTS` in `ibkrapi/config.py` and must stay below IBKR's published limits. `Tier` refuses `per_window_hard > per_window` and `concurrent < 1` at startup.
+- The caches all live under `history_cache.path` (default `data/history/`). `server.py` configures them at import time.
+  - `cache_bars.py`: CSV per (asset class, symbol, bar size). Every `/rates` and `/rates/ta` call still fetches from IBKR; the result is merged into the file (append-only, the still-open bar dropped unless `persist_open_bar`) and the fresh bars are returned. It is an archive, not a read cache. Keep the CSV header `time,open,high,low,close,tickVolume` stable; changing it needs a new file name.
+  - `cache_meta.py`: JSON with a TTL per scope (`contract_details` 7 days, `futures_expiries` 1 day, `chain_strike_list` 1 day). This one does serve hits from disk. `?refresh=true` skips the read and rewrites the file.
+  - `historian.py`: appends one CSV row per `/tick` call and one row per strike per expiry for each `/options/{symbol}/chain` call. Failures are logged and never fail the request.
+  - `exec_history.py`: per-day JSONL of executions (deduplicated by `execId`) and completed orders (by `permId`, `orderId`). Failures are logged and never fail the request.
+- `/ticks` (historical ticks) is paced but not cached. `refresh` on `/history/*` is accepted and has no effect: those calls always go to IBKR.
+- A bars cache write error does propagate and fails the request. The other three swallow their errors.

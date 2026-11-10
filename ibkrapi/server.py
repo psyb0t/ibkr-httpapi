@@ -12,7 +12,6 @@ from fastapi.exceptions import RequestValidationError
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ibkrapi import cache_bars, cache_meta, exec_history, historian, ibclient, pacing
-from ibkrapi.mcp_server import build_mcp_server
 from ibkrapi.api._generated.routers import (
     cfd,
     crypto,
@@ -47,6 +46,7 @@ from ibkrapi.errors import (
     error_response,
 )
 from ibkrapi.logger import log
+from ibkrapi.mcp_server import build_mcp_server
 
 _AUTH_HEADER_PREFIX = "Bearer "
 

@@ -242,10 +242,11 @@ class _Guard:
         await self._tier.acquire(self._contract_key)
         return self
 
-    async def __aexit__(self, _exc_type, _exc, _tb) -> bool:
+    async def __aexit__(self, _exc_type, _exc, _tb) -> None:
+        # Returns None (never suppresses the exception). A `-> bool` signature
+        # makes type checkers assume the body may be skipped silently.
         if self._tier is not None:
             self._tier.release(self._contract_key)
-        return False
 
 
 def guard(tier: str, contract_key: str | None = None) -> _Guard:

@@ -48,6 +48,11 @@ indent-style = "space"
 [tool.pyright]
 include = ["ibkrapi", "tests"]
 exclude = ["**/__pycache__", ".venv", "build"]
+# Generated FastAPI routers use the `param: str = ...` idiom for required query
+# params, which pyright reports as EllipsisType errors. They are never edited by
+# hand (same reason ruff excludes them), so their own diagnostics are ignored;
+# impl.py, which they call, is still checked.
+ignore = ["ibkrapi/api/_generated"]
 pythonVersion = "3.12"
 reportMissingImports = "warning"
 reportMissingTypeStubs = "none"

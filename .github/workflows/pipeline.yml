@@ -1,25 +1,59 @@
 name: pipeline
 
-# ibkr-httpapi ships as a docker-compose stack (IB Gateway + api + novnc), not a
-# single pushable image, so there's no docker-image build in CI. This pipeline
-# exists solely to publish the skill(s) under .agents/skills/ to ClawHub on tag
-# pushes.
-on:
-  push:
-    tags:
-      - "v*"
+# Every branch push runs lint and the unit tests in the dev container. A push
+# to main then refreshes the badges. A v* tag does not rerun the checks: it
+# waits for that commit's main run to succeed, cuts the GitHub release from the
+# annotated tag message, publishes the skill and the OpenClaw MCP bridge to
+# ClawHub, and refreshes the badges. No image is published: compose builds the
+# api image locally, and IBKR's license forbids redistributing gateway images.
+on: [push]
+
+permissions: {}
 
 jobs:
+  # `make lint` (ruff, pyright, bandit) and `make test` (pytest) build the dev
+  # image from Dockerfile.dev and run in it with --network none, so the runner
+  # needs only Docker and Make. No credentials.
+  code:
+    if: "!startsWith(github.ref, 'refs/tags/')"
+    permissions:
+      contents: read
+      security-events: write
+    uses: psyb0t/reusable-github-workflows/.github/workflows/code-workflow.yml@master
+    with:
+      lint_command: "make lint"
+      test_command: "make test"
+
+  wait:
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      actions: read
+    uses: psyb0t/reusable-github-workflows/.github/workflows/wait-for-default-branch.yml@master
+
+  release:
+    needs: [wait]
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    uses: psyb0t/reusable-github-workflows/.github/workflows/release-workflow.yml@master
+
   badges:
-    if: github.ref_name == github.event.repository.default_branch || startsWith(github.ref, 'refs/tags/')
+    needs: [code, wait]
+    if: "always() && ((github.ref_name == github.event.repository.default_branch && needs.code.result == 'success') || (startsWith(github.ref, 'refs/tags/') && needs.wait.result == 'success'))"
     permissions:
       contents: write
     uses: psyb0t/reusable-github-workflows/.github/workflows/create-badges.yml@master
 
-  # Publish the skills under .agents/skills/ to ClawHub, one ClawHub slug per
-  # subdir. Tag pushes only (see the trigger above).
-  publish-skills-to-clawhub:
+  # One ClawHub skill from .agents/skills/ibkr-httpapi and one ClawHub plugin
+  # from .agents/plugins/ibkr-httpapi, once the release exists.
+  publish-to-clawhub:
+    needs: [release]
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: read
     uses: psyb0t/reusable-github-workflows/.github/workflows/clawhub-publish.yml@master
-
+    with:
+      skill_names: '["ibkr-httpapi"]'
+      plugin_names: '["ibkr-httpapi"]'
     secrets:
       clawhub_token: ${{ secrets.CLAWHUB_TOKEN }}

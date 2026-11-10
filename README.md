@@ -2,369 +2,110 @@
 
 [![CI](https://github.com/psyb0t/ibkr-httpapi/actions/workflows/pipeline.yml/badge.svg?branch=main)](https://github.com/psyb0t/ibkr-httpapi/actions/workflows/pipeline.yml)
 [![version](https://raw.githubusercontent.com/psyb0t/ibkr-httpapi/badges/version.svg)](https://github.com/psyb0t/ibkr-httpapi/releases)
-[![license](https://raw.githubusercontent.com/psyb0t/ibkr-httpapi/badges/license.svg)](LICENSE)
+[![license](https://raw.githubusercontent.com/psyb0t/ibkr-httpapi/badges/license.svg)](https://github.com/psyb0t/ibkr-httpapi/blob/main/LICENSE)
 
-HTTP wrapper over Interactive Brokers via [ib_async](https://github.com/ib-api-reloaded/ib_async) and a local IB Gateway container. Same shape as [mt5-httpapi](https://github.com/psyb0t/mt5-httpapi) — talk to your brokerage with curl + JSON, get OHLC/ticks/account/positions/orders back, server-side TA via the wickworks sidecar.
+Interactive Brokers over curl and JSON. A FastAPI app drives a local IB Gateway container through [ib_async](https://github.com/ib-api-reloaded/ib_async) and gives you contracts, quotes, historical bars, option chains with Greeks, positions, account data and order entry for stocks, options, futures, CFDs, forex and crypto. The same operations are typed MCP tools at `/mcp`, and server-side TA comes from the [wickworks](https://github.com/psyb0t/docker-wickworks) sidecar.
 
-Unlike MT5 (Windows-only Python wheel → needs a Windows VM), IBKR's IB Gateway runs Linux-native, so the whole stack is just Linux containers. No KVM, no Windows ISO.
+It is the IBKR half of [mt5-httpapi](https://github.com/psyb0t/mt5-httpapi), same shape. MT5 needs a Windows VM; IB Gateway runs on Linux, so this is just Linux containers.
+
+This talks to a real brokerage account. `POST /v1/orders` places real orders. Start on a paper login and keep it on loopback until `api_token` is set.
 
 ## Contents
 
-- [Asset class routes](#asset-class-routes)
 - [Quick start](#quick-start)
-- [Configuration](#configuration)
-- [Endpoint catalog](#endpoint-catalog)
-- [MCP interface](#mcp-interface)
-- [Agent integrations](#agent-integrations)
-- [Stack](#stack)
-- [Layout](#layout)
-- [Licensing notes](#licensing-notes)
-
-## Asset class routes
-
-Every market type lives under its own URL prefix:
-
-| Prefix | Asset class | Notes |
-|--------|-------------|-------|
-| `/stocks/<symbol>` | Equities (STK) | Default exchange SMART |
-| `/options/<symbol>` | Options (OPT) | `?expiry=YYYYMMDD&strike=N&right=C\|P` |
-| `/options/<symbol>/chain` | Option chain | All strikes × expirations |
-| `/options/exercise` | Exercise / lapse | POST |
-| `/options/combo` | Multi-leg spread (BAG) | POST — vertical, condor, butterfly, calendar |
-| `/futures/<symbol>` | Futures (FUT) | `?expiry=YYYYMM&exchange=CME` mandatory |
-| `/futures/<symbol>/continuous` | Continuous future | No expiry |
-| `/cfd/<symbol>` | CFDs | SMART/USD defaults |
-| `/forex/<pair>` | Currencies (CASH) | IDEALPRO by default |
-| `/crypto/<symbol>` | Crypto (CRYPTO) | PAXOS by default |
-| `/orders` | Cross-asset order entry | POST/GET/DELETE |
-| `/positions` | Position list | `?account=` to filter |
-| `/account` `/accounts` | Account summary | |
-| `/history/executions` | Today's fills | |
-| `/ping` | Health | Confirms gateway connection |
-
-Per-symbol endpoints (where they make sense for that asset class):
-
-- `GET /<class>/<symbol>` — contract details
-- `GET /<class>/<symbol>/tick` — snapshot bid/ask/last (+ Greeks on options)
-- `GET /<class>/<symbol>/rates` — historical OHLC bars
-- `GET /<class>/<symbol>/ticks` — historical raw ticks
-- `POST /<class>/<symbol>/rates/ta` — bars + wickworks TA enrichment
+- [Routes](#routes)
+- [MCP and agents](#mcp-and-agents)
+- [Documentation](#documentation)
+- [Development](#development)
+- [Sponsor](#sponsor)
+- [License](#license)
 
 ## Quick start
 
+You need an IBKR Pro account (Lite has no API), IBKR Mobile for 2FA, Docker with Compose, Make, and `python3` with PyYAML on the host.
+
 ```bash
-git clone <this-repo>
+git clone https://github.com/psyb0t/ibkr-httpapi
 cd ibkr-httpapi
-cp config/config.yaml.example config/config.yaml   # set api_token, gateway port, market_data_type
-cp .env.ibkr.example .env.ibkr                     # IBKR_USERID + password for the gateway auto-login
+cp config/config.yaml.example config/config.yaml   # set api_token and market_data_type
+cp .env.ibkr.example .env.ibkr                     # TWS_USERID, TWS_PASSWORD, TRADING_MODE=paper
 make up
 ```
 
-First boot pulls images, starts the gateway container, IBC logs into IBKR (paper or live per `TRADING_MODE`), the API process connects via the TWS API socket on port 4002 (paper) / 4001 (live).
-
-Verify:
+Approve the 2FA push on your phone when the gateway logs in, then:
 
 ```bash
-curl -H "Authorization: Bearer $API_TOKEN" http://localhost:8889/ping
-# {"status":"ok","connected":true,...}
+curl -s -H "Authorization: Bearer $API_TOKEN" http://localhost:8889/v1/ping
 
-curl -H "Authorization: Bearer $API_TOKEN" \
-    "http://localhost:8889/stocks/AAPL/rates?duration=30+D&barSize=1d"
-
-curl -H "Authorization: Bearer $API_TOKEN" \
-    "http://localhost:8889/options/AAPL/chain"
-
-curl -H "Authorization: Bearer $API_TOKEN" \
-    "http://localhost:8889/options/AAPL/tick?expiry=20260619&strike=200&right=C"
+curl -s -H "Authorization: Bearer $API_TOKEN" \
+  "http://localhost:8889/v1/stocks/AAPL/rates?duration=30+D&barSize=1d"
 ```
 
-## Configuration
+IBKR's license forbids redistributing images that contain IB Gateway, so build one from [gnzsnz/ib-gateway-docker](https://github.com/gnzsnz/ib-gateway-docker) and set `IBKR_GATEWAY_IMAGE`. The full walkthrough, including the gateway image and the config keys that matter, is in [Getting started](https://psyb0t.github.io/ibkr-httpapi/getting-started/).
 
-Single file: `config/config.yaml`. See `config/config.yaml.example` for the schema. Key fields:
+## Routes
 
-- `api_token` — bearer token clients send in `Authorization: Bearer ...`. Empty = no auth.
-- `gateway.host` / `gateway.port` — IB Gateway TWS API endpoint. `ibgateway`:4002 by default (paper).
-- `gateway.client_id` — unique integer per concurrent socket. Default 1.
-- `gateway.account` — IBKR account number to scope to. Empty = use default.
-- `market_data_type` — 1=live (needs OPRA sub), 3=delayed-free, 4=delayed-frozen-free.
-- `wickworks.url` — optional TA sidecar. Empty = `/<class>/<symbol>/rates/ta` returns 503.
-- `contract_defaults.<class>` — per-asset-class default exchange/currency/multiplier so callers don't repeat them per request.
+Everything lives under `/v1`. The asset class is the URL prefix:
 
-IBKR login credentials live in **`.env.ibkr`** (gitignored, loaded into the gateway container only). Never put them in `config.yaml`.
+| Prefix | Asset class |
+| --- | --- |
+| `/stocks/{symbol}` | Equities |
+| `/options/{symbol}` | Options, plus `/chain`, `/options/combo` and `/options/exercise` |
+| `/futures/{symbol}` | Futures, plus `/continuous` and `/contracts` |
+| `/cfd/{symbol}` | CFDs |
+| `/forex/{pair}` | Currency pairs |
+| `/crypto/{symbol}` | Crypto |
 
-## Endpoint catalog
+Each class has `GET /{symbol}` (contract details), `/tick` (snapshot quote), `/rates` (OHLC bars) and `POST /rates/ta` (bars plus indicators); stocks also have `/ticks`. Cross-asset routes are `/orders`, `/positions`, `/account`, `/account/values`, `/accounts`, `/history/executions`, `/history/completed_orders` and `/ping`. Every parameter and response is in the [REST API reference](https://psyb0t.github.io/ibkr-httpapi/api/).
 
-### Market data
+A pacing gate answers `429 RATE_LIMIT_NEAR` before IBKR's own limits would trip, and bars, quote snapshots, option chains and executions you fetch are appended under `data/history/`. See [Pacing and history](https://psyb0t.github.io/ibkr-httpapi/pacing-and-history/).
 
-```bash
-# Stocks
-curl ".../stocks/AAPL"
-curl ".../stocks/AAPL/tick"
-curl ".../stocks/AAPL/rates?duration=1+Y&barSize=1d&whatToShow=ADJUSTED_LAST"
+## MCP and agents
 
-# Options
-curl ".../options/AAPL/chain"
-curl ".../options/AAPL/tick?expiry=20260619&strike=200&right=C"
-curl ".../options/AAPL/rates?expiry=20260619&strike=200&right=C&duration=10+D&barSize=1h"
-
-# Futures
-curl ".../futures/ES/continuous?exchange=CME"
-curl ".../futures/ES/contracts?exchange=CME"           # all expiries
-curl ".../futures/ES/rates?expiry=202609&exchange=CME&duration=30+D&barSize=1d"
-
-# Forex / CFD / Crypto
-curl ".../forex/EURUSD/rates?duration=30+D&barSize=1h&whatToShow=MIDPOINT"
-curl ".../cfd/IBDE40/tick"
-curl ".../crypto/BTC/tick?currency=USD"
-```
-
-### TA enrichment
-
-```bash
-curl -X POST -H "Content-Type: application/json" \
-    ".../stocks/AAPL/rates/ta" \
-    -d '{
-      "duration": "200 D",
-      "barSize": "1d",
-      "whatToShow": "ADJUSTED_LAST",
-      "indicators": {
-        "rsi": true,
-        "macd": true,
-        "bbands": {"length": 20, "std": 2}
-      }
-    }'
-```
-
-Indicator catalog matches `mt5-httpapi` — same wickworks sidecar.
-
-### Orders
-
-```bash
-# Stock market order
-curl -X POST -H "Content-Type: application/json" .../orders -d '{
-  "assetClass": "stock", "symbol": "AAPL",
-  "action": "BUY", "quantity": 10, "orderType": "MKT"
-}'
-
-# Future limit order
-curl -X POST -H "Content-Type: application/json" .../orders -d '{
-  "assetClass": "future", "symbol": "ES", "expiry": "202609", "exchange": "CME",
-  "action": "BUY", "quantity": 1, "orderType": "LMT", "lmtPrice": 5500.00
-}'
-
-# Vertical call spread (multi-leg)
-curl -X POST -H "Content-Type: application/json" .../options/combo -d '{
-  "symbol": "AAPL",
-  "legs": [
-    {"conid": 681000001, "ratio": 1, "action": "BUY"},
-    {"conid": 681000002, "ratio": 1, "action": "SELL"}
-  ],
-  "action": "BUY", "quantity": 1, "orderType": "LMT", "lmtPrice": 1.20
-}'
-
-# List + cancel
-curl .../orders
-curl -X DELETE .../orders/12345
-```
-
-### Exercise
-
-```bash
-curl -X POST -H "Content-Type: application/json" .../options/exercise -d '{
-  "conid": 681000001, "action": "EXERCISE", "quantity": 1, "account": "DU1234567"
-}'
-```
-
-## MCP interface
-
-The same API is also reachable over the [Model Context Protocol](https://modelcontextprotocol.io) at `/mcp` (streamable-HTTP), mounted on the same FastAPI app, in the same process — so an agent can drive it over JSON-RPC without a REST client. It exposes **dedicated, typed tools** grouped by family; the asset-class repetition collapses behind an `asset_class` enum instead of one tool per class:
-
-- **Market data** (`asset_class`: stock/option/future/cfd/forex/crypto) — `get_contract`, `get_quote`, `get_rates`, `get_rates_ta`, `get_stock_ticks`
-- **Asset specials** — `get_option_chain`, `place_option_combo`, `exercise_option`, `get_future_continuous`, `list_future_contracts`
-- **Orders** — `list_orders`, `get_order`, `place_order(asset_class, symbol, action, quantity, …)`, `cancel_order`, `cancel_all_orders`
-- **Account / positions / history** — `get_account`, `get_account_values`, `list_accounts`, `list_positions`, `get_executions`, `get_completed_orders`, `ping`
-- **Escape hatch** — `request(method, path, query, body)` + `endpoints` (OpenAPI catalog) for anything without a dedicated tool
-
-Every tool runs the same routers/validation/auth as a real HTTP request. The order/exercise tools are irreversible live-account actions and say so in their descriptions.
-
-Auth is the **same bearer token** as REST — `Authorization: Bearer <api_token>` — enforced by the same middleware, so an empty `api_token` means the MCP endpoint is open too. Reach it at `http://localhost:8889/mcp` (nginx front, same port as REST) — note this is the **app root**, not the `/v1` REST prefix.
-
-```bash
-curl -s "http://localhost:8889/mcp" \
-    -H "Authorization: Bearer $API_TOKEN" \
-    -H 'Content-Type: application/json' \
-    -H 'Accept: application/json, text/event-stream' \
-    -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"ping","arguments":{}}}'
-```
-
-For MCP clients that only speak local stdio servers, the [`@psyb0t/ibkr-httpapi`](.agents/plugins/ibkr-httpapi) OpenClaw plugin is a thin stdio↔HTTP bridge to this endpoint.
-
-## Agent integrations
-
-The [skill](.agents/skills/ibkr-httpapi) works in any agent that reads `.agents/skills/` (such as [peen](https://github.com/psyb0t/peen)), and
-installs natively in the clients below.
-
-### Claude Code
+`http://localhost:8889/mcp` serves 24 typed MCP tools over the same handlers and the same bearer token. The client skill installs in Claude Code and Codex from the psyb0t/agents marketplace and in OpenClaw from ClawHub, and an OpenClaw plugin bridges `/mcp` to stdio-only clients:
 
 ```bash
 claude plugin marketplace add psyb0t/agents
 claude plugin install ibkr-httpapi@psyb0t
 ```
 
-Claude Code prompts for the ibkr-httpapi URL (`IBKR_HTTPAPI_URL`) and, if auth is enabled, the
-API token (`API_TOKEN`) — the token is stored in your OS keychain.
+Details: [MCP server](https://psyb0t.github.io/ibkr-httpapi/mcp/) and [Agent integrations](https://psyb0t.github.io/ibkr-httpapi/agent-integrations/).
 
-### Codex
+## Documentation
+
+The full documentation is at **https://psyb0t.github.io/ibkr-httpapi/**.
+
+| Page | What's there |
+| --- | --- |
+| [Getting started](https://psyb0t.github.io/ibkr-httpapi/getting-started/) | Clone to a working `/v1/ping`, step by step. |
+| [Deployment](https://psyb0t.github.io/ibkr-httpapi/deployment/) | Services, networks, ports, state on disk, upgrades, the daily restart. |
+| [Configuration](https://psyb0t.github.io/ibkr-httpapi/configuration/) | Every `config.yaml` key, environment variable and flag. |
+| [REST API](https://psyb0t.github.io/ibkr-httpapi/api/) | All 42 operations, errors and rate limits. |
+| [MCP server](https://psyb0t.github.io/ibkr-httpapi/mcp/) | The `/mcp` endpoint and its tools. |
+| [Pacing and history](https://psyb0t.github.io/ibkr-httpapi/pacing-and-history/) | Rate limiting and what gets written to `data/history/`. |
+| [Client libraries](https://psyb0t.github.io/ibkr-httpapi/clients/) | Generated Go and Python clients. |
+| [Agent integrations](https://psyb0t.github.io/ibkr-httpapi/agent-integrations/) | Claude Code, Codex and OpenClaw. |
+| [Security](https://psyb0t.github.io/ibkr-httpapi/security/) | What the token protects and what to do before exposing it. |
+| [Troubleshooting](https://psyb0t.github.io/ibkr-httpapi/troubleshooting/) | Hanging requests, connection failures, known bugs. |
+| [Development](https://psyb0t.github.io/ibkr-httpapi/development/) | Layout, tests, code generation, CI, releases. |
+
+## Development
+
+Lint, tests and code generation run in a dev container, so Docker and Make are enough:
 
 ```bash
-codex plugin marketplace add psyb0t/agents
-codex plugin add ibkr-httpapi@psyb0t
+make lint      # ruff, pyright, bandit
+make test      # pytest with a mocked IB connection
+make generate  # routers, models and clients from api/v1.yaml
+make help      # everything else
 ```
 
-Installed via the marketplace, the skill invokes as `$ibkr-httpapi:ibkr-httpapi`. Codex also
-picks the skill up automatically, with no install, in any repo containing `.agents/skills/` —
-there it invokes as plain `$ibkr-httpapi`.
+[`api/v1.yaml`](https://github.com/psyb0t/ibkr-httpapi/blob/main/api/v1.yaml) is the source of truth; never edit generated code. Agent and contributor rules are in [`AGENTS.md`](https://github.com/psyb0t/ibkr-httpapi/blob/main/AGENTS.md). Release notes: [`CHANGELOG.md`](https://github.com/psyb0t/ibkr-httpapi/blob/main/CHANGELOG.md).
 
-### OpenClaw
+## Sponsor
 
-The skill is published to ClawHub on every release:
+<a href="https://www.buymeacoffee.com/psyb0t"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me a Coffee" height="60" width="217"></a>
 
-```bash
-openclaw skills install @psyb0t/ibkr-httpapi
-```
+## License
 
-For MCP clients that speak local stdio, the [`@psyb0t/ibkr-httpapi`](.agents/plugins/ibkr-httpapi)
-plugin bridges to the service's `/mcp` endpoint:
-
-```bash
-openclaw plugins install clawhub:@psyb0t/ibkr-httpapi
-```
-
-Then set `IBKR_HTTPAPI_URL` (the server root, e.g. `http://localhost:8889`) and, if the server
-has `api_token`/`API_TOKEN` configured, `IBKR_HTTPAPI_TOKEN`.
-
-## Stack
-
-- **Python 3.12**, **FastAPI** + **uvicorn**, **ib_async** for the TWS-API socket.
-- **IB Gateway** in Docker via [gnzsnz/ib-gateway-docker](https://github.com/gnzsnz/ib-gateway-docker) (built locally — IBKR forbids redistributing pre-built images with their installer).
-- **IBC** (IB Controller) inside the gateway image handles auto-login + daily reconnect.
-- **nginx** in front for loopback-bound routing + future tailnet exposure.
-- **Wickworks** TA sidecar (optional, same image as mt5-httpapi).
-
-## Layout
-
-```
-ibkr-httpapi/
-├── api/                    OpenAPI 3.1.0 source of truth
-│   ├── v1.yaml             42 operations, 34 schemas — drives all generators
-│   ├── _templates/         Custom Jinja for fastapi-codegen (async def + delegate)
-│   └── oapi-codegen-go.yaml Go client generator config
-├── ibkrapi/                FastAPI package
-│   ├── config.py           YAML + env config
-│   ├── ibclient.py         ib_async lifecycle + reconnect
-│   ├── contracts.py        Asset class → Contract factories
-│   ├── marketdata.py       Shared bars/ticks/TA helpers
-│   ├── serialize.py        Dataclass → dict converters
-│   ├── server.py           FastAPI app + middleware + /v1 prefix wiring
-│   ├── main.py             uvicorn entry
-│   └── api/
-│       ├── impl.py         Hand-written impl module (business logic)
-│       └── _generated/     fastapi-codegen output — NEVER hand-edit
-│           ├── models.py   Pydantic v2 schemas from v1.yaml
-│           └── routers/    Per-asset router stubs (async def → impl.*)
-├── pkg/clients/
-│   ├── go/                 Generated Go client (oapi-codegen)
-│   └── python/             Generated Python client (openapi-python-client)
-├── tests/                  pytest — 93 tests, mocked ib_async via conftest.py
-├── scripts/                Supply-chain helpers (age-gate bump + audits)
-├── config/                 config.yaml.example (real config.yaml gitignored)
-├── nginx/                  nginx.conf.example (real nginx.conf gitignored)
-├── Dockerfile.api          Multi-stage prod image (non-root, --require-hashes)
-├── Dockerfile.dev          Dev container (lint + tests + codegen tooling)
-├── Dockerfile.novnc        Optional noVNC sidecar
-├── docker-compose.yml.example  Stack template (loopback default, isolated networks)
-├── .env.ibkr.example       Gateway credentials env template
-├── pyproject.toml          Project meta + [tool.uv] exclude-newer age-gate
-├── requirements.in         Direct deps (hand-edited)
-├── requirements.txt        Hash-locked lock (generated, committed)
-├── requirements-dev.txt    Dev-only tooling (not hash-locked)
-├── CHANGELOG.md            Per-release notes
-├── run.sh                  Bootstrap + compose up
-└── Makefile                up/down/logs/build, lint/test, pkg-*, audit*, generate*
-```
-
-## Supply chain
-
-- `make audit` — `pip-audit` against `requirements.txt` (OSV/GHSA scan).
-- `make audit-go` — `govulncheck` against `pkg/clients/go/go.sum`.
-- `make audit-compose` — greps `docker-compose.yml*` for banned settings (`privileged`, `pid:host`, `docker.sock`, `SYS_ADMIN`), unpinned image tags, public-bound ports.
-- Age-gate (`[tool.uv] exclude-newer` in `pyproject.toml`) bumps automatically on every `make pkg-{add,update,upgrade,remove}` via `scripts/bump_exclude_newer.sh` — 7-day floor at the moment of mutation.
-- All base images SHA-digest pinned. `requirements.txt` hash-locked via `uv pip compile --generate-hashes`.
-
-## Pacing + history caches (v0.2.0)
-
-Every IBKR-bound endpoint is preemptively rate-limited AND every endpoint
-that returns historical / quasi-static / piggyback-snapshottable data is
-transparently cached to disk under `data/history/`. Goal: protect API
-access (IBKR revokes for repeat pacing violations) AND grow a long-term
-goldmine of market data on every call.
-
-- **Pacing** — 3 tiers (`historical` / `market_data` / `orders`) with
-  sliding-window counters + per-contract `asyncio.Lock` + global
-  semaphore. Defaults sit BELOW IBKR's published caps. Hard cap →
-  `429 RATE_LIMIT_NEAR`. Tune via `config.yaml:pacing.<tier>.<key>`.
-- **Bars cache** — `/rates` + `/ticks` persist to wickworks-shaped CSV
-  per (asset class, symbol, timeframe). Append-only.
-- **Live snapshot historian** — every `/tick` and `/chain` call appends
-  to disk (bid/ask/last + Greeks/IV for options, per-strike rows for
-  chains). Best-effort; never blocks the caller.
-- **Meta cache** — long-TTL JSON for contract details (7d), futures
-  expiry lists (1d), option chain strike lists (1d).
-- **Exec ledger** — `/history/executions` + `/history/completed_orders`
-  append-only JSONL by day, dedup'd by execId / (permId, orderId).
-
-Mount `./data:/app/data` (compose does this by default). Back up that
-directory — it IS the goldmine. Configure or disable per-feature via
-`config/config.yaml`.
-
-**Refresh & rate-limit shape (v0.3.0):**
-
-- `?refresh=true` on any cacheable endpoint (`/rates`, `/ticks`, `/rates/ta`,
-  `/<class>/{symbol}`, `/options/{...}/chain`, `/futures/{...}/continuous`,
-  `/futures/{...}/contracts`, `/history/executions`, `/history/completed_orders`)
-  bypasses the cache read and forces a fresh upstream fetch. The result is
-  still written back to disk — the goldmine grows either way.
-- HTTP `429 RATE_LIMIT_NEAR` envelope returned (and documented in `/openapi.json`)
-  on every IBKR-bound endpoint when the preemptive pacing gate fires. Body is
-  the standard `{code, message, details: {rule, used, limit, window_sec,
-  retry_after_sec, tier}}` shape. Back off, retry — IBKR access stays intact.
-- `/rates/ta` reads from the same bars cache as `/rates` and only re-runs the
-  wickworks TA pass on the cached bars. Cache hits = zero IBKR load + still
-  fresh indicator values.
-
-**Licensing caveat:** IBKR's market data terms restrict redistribution.
-Internal backtesting / model training / forensics on the cache is fine
-(and explicitly allowed). Selling raw OHLC from the cache likely
-violates OPRA / NYSE / Nasdaq redistributor licenses + IBKR's API
-license — sell derived analysis (signals, backtests, aggregated stats)
-instead.
-
-## Code generation
-
-`api/v1.yaml` is the source of truth. `make generate` (umbrella) runs:
-
-- `make generate-api` — fastapi-codegen + custom Jinja → `ibkrapi/api/_generated/`
-- `make generate-client-go` — oapi-codegen → `pkg/clients/go/client.gen.go`
-- `make generate-client-python` — openapi-python-client → `pkg/clients/python/ibkr-httpapi-client/`
-
-NEVER hand-edit anything under `_generated/` or `pkg/clients/*/`. Edit the spec, rerun the make target.
-
-## Licensing notes
-
-- **You must build the IB Gateway image locally.** IBKR's installer license forbids redistributing pre-built images containing their binary. `gnzsnz/ib-gateway-docker` builds with a checksum-verified download at build time — clone it, build it, push to your own private registry if you need to share across hosts.
-- **OPRA market data subscription** is needed for real-time options data. Free delayed (15-20 min) works for swing timeframes — set `market_data_type: 3` in config. For real-time, subscribe to the US Securities Snapshot and Futures Value Bundle + OPRA in your IBKR account (~$5-15/mo non-pro).
-- **API requires IBKR Pro.** IBKR Lite accounts have the API disabled.
-- **Daily restart**: IBKR forces a logout once a day. IB Gateway 974+ + IBC 3.15+ handles this without human intervention; the API process reconnects automatically.
-- **Weekly 2FA**: IBKR may push a 2FA prompt once per week (mobile app push). Pair IBKR Mobile to your account for one-tap accept.
-
-This project is licensed under WTFPL — see `LICENSE`.
+[WTFPL](https://github.com/psyb0t/ibkr-httpapi/blob/main/LICENSE).

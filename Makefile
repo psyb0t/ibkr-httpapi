@@ -1,4 +1,4 @@
-.PHONY: help up down logs build status clean dev-image shell lint lint-fix format test pkg-lock pkg-add pkg-update pkg-upgrade pkg-remove pkg-lock-go pkg-add-go pkg-update-go pkg-upgrade-go pkg-remove-go audit audit-go audit-compose generate generate-api generate-api-check generate-client-go generate-client-python
+.PHONY: help up down logs build status clean dev-image shell lint lint-fix format test pkg-lock pkg-add pkg-update pkg-upgrade pkg-remove pkg-lock-go pkg-add-go pkg-update-go pkg-upgrade-go pkg-remove-go audit audit-go audit-compose generate generate-api generate-api-check generate-client-go generate-client-python docs
 
 # Image tags + run wrappers — everything dev-shaped runs INSIDE the dev
 # container so the host stays clean. Per global rule 30-makefile-contract.
@@ -161,6 +161,24 @@ audit-go: dev-image ## OSV/CVE scan against pkg/clients/go go.sum
 # Wire into release gate alongside `audit` (Python) / `audit-go` (Go).
 audit-compose: ## Audit docker-compose.yml.example for hardening violations
 	@bash scripts/audit_compose.sh
+
+# ── Docs site ────────────────────────────────────────────────────
+# Builds docs/ with the image GitHub Pages uses, so the local result matches
+# the published site. The output directory is gitignored.
+DOCS_SITE = .testing/docs-site
+
+docs: ## Build the documentation site with the GitHub Pages image (gitignored output)
+	@mkdir -p "$(DOCS_SITE)"
+	docker run --rm \
+		--user "$$(id -u):$$(id -g)" \
+		-e HOME=/tmp \
+		-e GITHUB_WORKSPACE=/work \
+		-e GITHUB_REPOSITORY=psyb0t/ibkr-httpapi \
+		-e INPUT_SOURCE=docs \
+		-e INPUT_DESTINATION="$(DOCS_SITE)" \
+		-e INPUT_VERBOSE=false \
+		-v "$(CURDIR):/work" \
+		ghcr.io/actions/jekyll-build-pages:v1.0.13@sha256:6791ebfd912185ed59bfb5fb102664fa872496b79f87ff8b9cfba292a7345041
 
 # ── Prod stack ───────────────────────────────────────────────────
 up: ## Bring up the IBKR HTTP API stack
